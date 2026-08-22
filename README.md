@@ -58,7 +58,9 @@ https://mareetcarr-stack.github.io/peru-tour/
 
 - **Currency converter** is a static calculator with fixed exchange rates — not sheet-backed, matches the original design.
 - **Ticket notes** (the textarea on the Tickets tab) save to that device's local storage only, not to the Sheet — there's no dedicated column for it. Ask if you'd like a `Notes` column added to the `TICKETS` tab so it syncs properly.
-- **Dietary requirements** are now directly editable in the app and sync straight to the `B-DAYS, AGES, DIET` sheet.
+- **Dietary requirements** are directly editable in the app and sync straight to the `B-DAYS, AGES, DIET` sheet.
+- **Arrived at airport** count on the Passengers tab reads the `CHECK-IN STATUS` column D `Arrived` flag (set by the existing automation, not manually toggled in the app) and excludes Yenrri (row id `0`) from both the numerator and denominator.
 - Sync is "live enough", not instant multi-device real-time: every tap writes to the Sheet immediately, and the app re-fetches the full data set every ~45 seconds and whenever the app regains focus.
 - Tour/tip prices are editable per-tour in the Optional Tours table header — editing one writes straight back to the Sheet's price row for everyone.
+- Optional Tours grand totals show both currencies with the other shown in brackets as a rough conversion (fixed rates, same as the currency converter) — not a live FX rate.
 - `RECEIPTS`, `VALENCIA TRAVEL`, `Hoja 22`, `Hoja 25` tabs aren't used by any screen.

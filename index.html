@@ -16,26 +16,31 @@
 /* ─── RESET & BASE ─────────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
-  /* Light theme. --dark-input-* stay dark on purpose (textboxes keep a black background). */
-  --bg:#f3f3f4;--bg2:#ffffff;--bg3:#ececee;--bg4:#e4e4e7;
-  --border:#e3e3e6;--border2:#d3d3d8;
-  --text:#111113;--text2:#3a3a3d;--text3:#6f6f75;--text4:#9c9ca3;
+  /* Only the outer page (topbar/navbar/screen backdrop) is light. Every
+     content surface — cards, rows, tables — stays black, per feedback:
+     "everything that contains content should be black". Small accent
+     chips/pills keep their light tint (green/amber/blue/red/yellow) since
+     that reads well sitting on a black card. */
+  --bg:#f3f3f4;--page-text:#111113;--page-text2:#6f6f75;
+  --bg2:#1a1a1a;--bg3:#222;--bg4:#111;
+  --border:#2a2a2a;--border2:#333;
+  --text:#fff;--text2:#ccc;--text3:#888;--text4:#666;
   --red:#c8102e;--red-bg:#fdeaed;--red-border:#f2b9c4;
   --green:#1c8a4c;--green-bg:#e7f6ed;--green-border:#bfe6cd;
   --amber:#a6690a;--amber-bg:#fdf0da;--amber-border:#f0d9a3;
   --blue:#2563eb;--blue-bg:#e9f0fe;--blue-border:#c7dbfb;
   --purple:#7c3aed;--purple-bg:#f1e8fe;
   --yellow:#8a6d00;--yellow-bg:#fdf3c9;--yellow-border:#eeddA0;
-  --dark-bg:#111113;--dark-border:#333336;--dark-text:#fff;
+  --dark-bg:#0d0d0d;--dark-border:#333336;--dark-text:#fff;
   --nav-h:64px;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 }
-html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--page-text)}
 
 /* ─── APP SHELL ────────────────────────────────────────────────── */
 #app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;position:relative;overflow:hidden;background:var(--bg)}
 #topbar{padding:12px 20px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg)}
-#topbar h1{font-size:20px;font-weight:600;color:var(--text)}
+#topbar h1{font-size:20px;font-weight:600;color:var(--page-text)}
 .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
 .badge.red{background:var(--red);color:#fff}
 .badge.amb{background:var(--amber-bg);color:var(--amber)}
@@ -100,12 +105,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .pax-detail{color:var(--text4);font-size:10px;margin-top:1px}
 .latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:8px;padding:3px 8px;color:var(--yellow);font-size:10px;text-decoration:none;margin-left:auto;flex-shrink:0;white-space:nowrap;font-weight:600}
 .latam-link i{font-size:12px}
-.arr-ck{flex-shrink:0}
-
 /* ─── CHECKLIST SCREEN ──────────────────────────────────────────── */
-.chk-row{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
-.chk-row:last-child{border-bottom:none}
-.chk-box{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff}
+.chk-row{display:flex;align-items:flex-start;gap:11px;padding:10px 12px;background:var(--bg2);border-radius:11px;margin-bottom:7px;border:1px solid var(--border)}
+.chk-box{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:transparent}
 .chk-box.done{background:var(--green-bg);border-color:var(--green)}
 .chk-box.done::after{content:'✓';color:var(--green);font-size:12px}
 .chk-lbl{color:var(--text2);font-size:13px;line-height:1.4}
@@ -120,7 +122,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
 .tour-wrap{overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
 .tour-wrap::-webkit-scrollbar{display:none}
-.ttbl{border-collapse:collapse;table-layout:fixed;width:100%}
+.ttbl{border-collapse:collapse;table-layout:fixed;width:100%;background:var(--bg2)}
 .ttbl th{color:var(--text4);font-weight:500;padding:5px 3px;border-bottom:1px solid var(--border);text-align:center;font-size:9px;white-space:nowrap;overflow:hidden}
 .ttbl th.lft{text-align:left;padding-left:4px;position:sticky;left:0;background:var(--bg2);z-index:2}
 .ttbl td{height:34px;padding:0 3px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;overflow:hidden}
@@ -128,14 +130,15 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .tsep{border-left:1.5px solid var(--border)}
 .cnt-row td{border-top:1px solid var(--border2);border-bottom:none;height:28px;font-size:10px;font-weight:600}
 .thdr{background:var(--bg3);padding:3px 2px}
-.price-edit{width:38px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:4px;color:var(--dark-text);font-size:9px;padding:1px 2px;text-align:center;margin-top:2px;font-family:inherit}
-.ck{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;vertical-align:middle;background:#fff}
+.price-edit{width:38px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:4px;color:var(--dark-text);font-size:9px;padding:1px 2px;text-align:center;margin-top:2px;font-family:inherit;-moz-appearance:textfield}
+.price-edit::-webkit-outer-spin-button,.price-edit::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.ck{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;vertical-align:middle;background:transparent}
 .ck.y{background:var(--green-bg);border-color:var(--green)}.ck.y::after{content:'✓';color:var(--green);font-size:9px}
-.cc{display:inline-flex;flex-direction:column;align-items:center;gap:2px;width:100%}
-.cc-lbl{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;cursor:pointer;user-select:none;border:1px solid var(--border2);background:#fff;color:var(--text4);white-space:nowrap}
+.cc{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:4px;width:100%}
+.cc-lbl{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;cursor:pointer;user-select:none;border:1px solid var(--border2);background:var(--bg3);color:var(--text4);white-space:nowrap}
 .cc-lbl.usd{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
 .cc-lbl.pen{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
-.cc-inp{width:44px;font-size:9px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:3px;color:var(--dark-text);padding:2px;text-align:center;outline:none;font-family:inherit;-moz-appearance:textfield}
+.cc-inp{width:40px;font-size:9px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:3px;color:var(--dark-text);padding:2px;text-align:center;outline:none;font-family:inherit;-moz-appearance:textfield;flex-shrink:0}
 .cc-inp::-webkit-outer-spin-button,.cc-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .row-total{font-size:10px;color:var(--text2);line-height:1.5;white-space:nowrap}
 .row-total b{color:var(--green)}
@@ -342,6 +345,14 @@ if ('serviceWorker' in navigator) {
 // ─── SMALL HELPERS ───────────────────────────────────────────────
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function initials(name) { return (name || '').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '?'; }
+const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// "12/08/2026" (dd/MM/yyyy, as sent by the Apps Script backend) -> "12 Aug"
+function shortDate(d) {
+  const m = String(d || '').match(/^(\d{1,2})\/(\d{1,2})\/\d{2,4}$/);
+  if (!m) return d || '';
+  const mon = SHORT_MONTHS[parseInt(m[2], 10) - 1];
+  return mon ? `${parseInt(m[1], 10)} ${mon}` : d;
+}
 
 // ─── API (no PIN — the deployed URL itself is the only gate) ────
 function apiGet(params) {
@@ -440,9 +451,13 @@ function renderFlights() {
 function renderPassengers() {
   if (!DATA) return;
   const pax = DATA.passengers || [];
+  // Yenrri (id "0") is the tour leader, not a travelling passenger — excluded
+  // from both counts.
+  const travellers = pax.filter(p => p.id !== '0');
+  const arrived = travellers.filter(p => p.arrived).length;
   const downloaded = pax.filter(p => /downloaded/i.test(p.boardingStatus)).length;
   document.getElementById('pax-summary').innerHTML = `
-    <div class="sum-card"><div class="sum-n">${pax.length}</div><div class="sum-l">Total passengers</div></div>
+    <div class="sum-card"><div class="sum-n">${arrived}/${travellers.length}</div><div class="sum-l">Arrived at airport</div></div>
     <div class="sum-card"><div class="sum-n" style="color:var(--green)">${downloaded}</div><div class="sum-l">BP downloaded</div></div>`;
   const list = document.getElementById('pax-list');
   if (!pax.length) { list.innerHTML = '<div class="empty-hint">No passengers yet</div>'; return; }
@@ -452,19 +467,12 @@ function renderPassengers() {
     const pillClass = ok ? 'g' : failed ? 'r' : 'a';
     const pillTxt = p.boardingStatus || 'Pending';
     return `<div class="pax-row">
-      <div class="ck arr-ck${p.arrived ? ' y' : ''}" title="Arrived at airport" onclick="toggleArrived('${p.id}', this)"></div>
       <div class="av">${esc(initials(p.name))}</div>
       <div style="flex:1"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
       ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
       <span class="pill ${pillClass}" style="margin-left:${p.checkinLink ? '6px' : 'auto'}">${esc(pillTxt)}</span>
     </div>`;
   }).join('');
-}
-function toggleArrived(id, el) {
-  const on = !el.classList.contains('y');
-  el.classList.toggle('y');
-  const row = DATA.passengers.find(p => p.id === id); if (row) row.arrived = on;
-  write({ action: 'toggleArrived', id: id, value: on });
 }
 
 // ─── CHECKLIST ───────────────────────────────────────────────────
@@ -502,18 +510,17 @@ function renderTours() {
   const defs = tours.tourDefs;
 
   colgroup.innerHTML = `<col style="width:112px">` +
+    `<col style="width:64px"><col style="width:44px">` +
     `<col style="width:56px">` +
-    defs.map(() => `<col style="width:34px"><col style="width:56px">`).join('') +
-    `<col style="width:64px"><col style="width:44px">`;
+    defs.map(() => `<col style="width:34px"><col style="width:78px">`).join('');
 
   thead.innerHTML = `<tr>
       <th class="lft">Passenger</th>
-      <th style="color:var(--green)">Tips<br><input class="price-edit" type="number" value="${tours.tipPrice}" onchange="setTipPrice(this.value)"></th>
-      ${defs.map((d, ti) => `<th colspan="2" class="tsep thdr">${esc(d.name)}<br><input class="price-edit" type="number" value="${d.price}" onchange="setTourPrice(${ti}, this.value)"></th>`).join('')}
       <th class="tsep" rowspan="2">Total</th><th rowspan="2">Paid</th>
+      <th rowspan="2" style="color:var(--green)">Tips<br><input class="price-edit" type="number" value="${tours.tipPrice}" onchange="setTipPrice(this.value)"></th>
+      ${defs.map((d, ti) => `<th colspan="2" class="tsep thdr">${esc(d.name)}<br><input class="price-edit" type="number" value="${d.price}" onchange="setTourPrice(${ti}, this.value)"></th>`).join('')}
     </tr>
     <tr>
-      <th class="tsep lft"></th><th></th>
       ${defs.map(() => `<th class="tsep" style="color:var(--green);font-size:8px">T</th><th style="color:var(--amber);font-size:8px">V</th>`).join('')}
     </tr>`;
 
@@ -521,22 +528,22 @@ function renderTours() {
   tbody.innerHTML = rows.map(r => `
     <tr>
       <td class="nm">${esc(r.name)}</td>
+      <td class="tsep">${rowTotalHtml_(r, tours)}</td>
+      <td><div class="ck${r.paid ? ' y' : ''}" onclick="togglePaid('${r.id}', this)"></div></td>
       <td>${ccWidget_('tip', r.id, -1, r.tip)}</td>
       ${r.tours.map((t, ti) => `
         <td class="tsep"><div class="ck${t.t ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, this)"></div></td>
         <td>${ccWidget_('tour', r.id, ti, t.v)}</td>
       `).join('')}
-      <td class="tsep">${rowTotalHtml_(r, tours)}</td>
-      <td><div class="ck${r.paid ? ' y' : ''}" onclick="togglePaid('${r.id}', this)"></div></td>
     </tr>`).join('') + `
     <tr class="cnt-row">
       <td class="nm" style="font-size:9px;color:var(--text4)">Count</td>
+      <td class="tsep"></td><td></td>
       <td style="color:var(--amber)">${rows.filter(r => r.tip.currency).length || ''}</td>
       ${defs.map((d, ti) => `
         <td class="tsep" style="color:var(--green)">${rows.filter(r => r.tours[ti].t).length || ''}</td>
         <td style="color:var(--amber)">${rows.filter(r => r.tours[ti].v.currency).length || ''}</td>
       `).join('')}
-      <td class="tsep"></td><td></td>
     </tr>`;
 
   renderTourTotals();
@@ -598,8 +605,8 @@ function rowTotalHtml_(r, tours) {
 
 function toggleTourTick(id, tourIndex, el) {
   const on = !el.classList.contains('y');
-  el.classList.toggle('y');
   const row = findTourRow_(id); if (row) row.tours[tourIndex].t = on;
+  renderTours(); // re-render so the per-tour Count row updates immediately, not on the next 45s poll
   write({ action: 'toggleTourTick', id: id, tourIndex: tourIndex, value: on });
 }
 function togglePaid(id, el) {
@@ -651,9 +658,11 @@ function renderTourTotals() {
     html += mkBlock(d.name, rowsHtml);
   });
 
+  const usdAsPen = grandUsd * R.usdPen;
+  const penAsUsd = grandPen * R.penUsd;
   html += `<div class="grand-block"><div class="grand-title">Grand totals</div>
-    <div class="grand-row"><div class="grand-lbl usd">USD</div><div class="grand-val">$${grandUsd.toFixed(2)}</div></div>
-    <div class="grand-row"><div class="grand-lbl pen">PEN</div><div class="grand-val">S/${grandPen.toFixed(2)}</div></div></div>`;
+    <div class="grand-row"><div class="grand-lbl usd">USD</div><div class="grand-val">$${grandUsd.toFixed(2)}${grandUsd ? ` <span style="color:var(--text4);font-weight:400">(S/${usdAsPen.toFixed(2)})</span>` : ''}</div></div>
+    <div class="grand-row"><div class="grand-lbl pen">PEN</div><div class="grand-val">S/${grandPen.toFixed(2)}${grandPen ? ` <span style="color:var(--text4);font-weight:400">($${penAsUsd.toFixed(2)})</span>` : ''}</div></div></div>`;
   area.innerHTML = html;
 }
 
@@ -668,7 +677,7 @@ function renderTickets() {
   list.innerHTML = tickets.ticketDefs.map((def, di) => {
     const paxRows = tickets.rows;
     const checkedCount = paxRows.filter(r => r.checks[di] && r.checks[di].checked).length;
-    const meta = [def.date, def.time].filter(Boolean).join(' · ');
+    const meta = [shortDate(def.date), def.time].filter(Boolean).join(' · ');
     return `<div class="tkt-sec">
       <div class="tkt-hdr" onclick="toggleTicketSection(this)">
         <span class="tkt-title">${esc(def.title)}</span>
