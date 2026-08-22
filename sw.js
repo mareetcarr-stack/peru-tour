@@ -30,8 +30,10 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   const req = event.request;
   const url = req.url;
-  // Never intercept calls to the Apps Script backend — always go live.
-  if (url.includes('script.google.com')) return;
+  // Never intercept calls to the Apps Script backend or the live FX-rate
+  // API — always go live for both (the app itself handles caching/fallback
+  // for the FX rates in localStorage).
+  if (url.includes('script.google.com') || url.includes('er-api.com')) return;
 
   // Network-first for the HTML shell itself. This file changes with every
   // deploy (including config like the Apps Script URL) — cache-first here

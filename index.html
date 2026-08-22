@@ -280,7 +280,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
           <div class="cur-row"><span class="cur-lbl">PEN → AUD</span><input class="cur-in" type="number" id="c-pa" value="1500" oninput="calcCur()"><span class="cur-res" id="r-pa"></span></div>
           <div class="cur-row"><span class="cur-lbl">AUD → PEN</span><input class="cur-in" type="number" id="c-ap" oninput="calcCur()"><span class="cur-res" id="r-ap"></span></div>
         </div>
-        <div class="cur-rate">Rates: AUD/USD 0.6895 · USD/PEN 3.422 · PEN/AUD 0.4238</div>
+        <div class="cur-rate" id="cur-rate-text">Rates: loading…</div>
       </div>
 
       <!-- TICKETS -->
@@ -835,8 +835,56 @@ function switchTab(view, el) {
   el.classList.add('active');
 }
 
-// ─── CURRENCY CALCULATOR (static utility, not sheet-backed) ─────
-const R = { audUsd: 0.6895, usdAud: 1.4503, usdPen: 3.422, penUsd: 0.2922, penAud: 0.4238, audPen: 2.3595 };
+// ─── CURRENCY CALCULATOR — live rates, cached for offline use ────
+// Fallback only used if we've never successfully fetched live rates and
+// there's no cache (e.g. very first load, offline). Everything else prefers
+// a live rate.
+let R = { audUsd: 0.6895, usdAud: 1.4503, usdPen: 3.422, penUsd: 0.2922, penAud: 0.4238, audPen: 2.3595 };
+let ratesAsOf = null; // ISO-ish string from the API, or null if only the hardcoded fallback is loaded
+
+function applyRates(usdAud, usdPen, asOf) {
+  R = {
+    usdAud, audUsd: 1 / usdAud,
+    usdPen, penUsd: 1 / usdPen,
+    audPen: usdPen / usdAud, penAud: usdAud / usdPen,
+  };
+  ratesAsOf = asOf;
+}
+
+function renderRateFooter(stale) {
+  const el = document.getElementById('cur-rate-text');
+  if (!el) return;
+  const asOf = ratesAsOf ? ` as of ${esc(ratesAsOf)}` : '';
+  const flag = stale ? ' (offline — last known rates)' : '';
+  el.textContent = `Rates: AUD/USD ${R.audUsd.toFixed(4)} · USD/PEN ${R.usdPen.toFixed(3)} · PEN/AUD ${R.penAud.toFixed(4)}${asOf}${flag}`;
+}
+
+function loadRates() {
+  // Show cached rates immediately (if any) while a fresh fetch runs, so the
+  // figure on screen is never worse than "last time we successfully fetched".
+  try {
+    const cached = JSON.parse(localStorage.getItem('ptm_fx_rates') || 'null');
+    if (cached && cached.usdAud && cached.usdPen) {
+      applyRates(cached.usdAud, cached.usdPen, cached.asOf);
+      renderRateFooter();
+      calcCur();
+    }
+  } catch (e) { /* ignore a corrupt cache */ }
+
+  fetch('https://open.er-api.com/v6/latest/USD').then(r => r.json()).then((d) => {
+    if (d.result !== 'success' || !d.rates || !d.rates.AUD || !d.rates.PEN) throw new Error('bad response');
+    const asOf = d.time_last_update_utc || new Date().toUTCString();
+    applyRates(d.rates.AUD, d.rates.PEN, asOf);
+    localStorage.setItem('ptm_fx_rates', JSON.stringify({ usdAud: d.rates.AUD, usdPen: d.rates.PEN, asOf }));
+    renderRateFooter();
+    calcCur();
+    if (DATA && DATA.tours) renderTourTotals(); // refresh the USD<->PEN bracket conversions there too
+  }).catch((err) => {
+    console.error('Live FX rate fetch failed, using cached/fallback rates', err);
+    renderRateFooter(true);
+  });
+}
+
 function calcCur() {
   const g = id => { const e = document.getElementById(id); return e ? parseFloat(e.value) || 0 : 0; };
   const s = (id, val, sym) => { const e = document.getElementById(id); if (e) e.textContent = val ? sym + val.toFixed(2) : '—'; };
@@ -850,8 +898,11 @@ function calcCur() {
 
 // ─── INIT ────────────────────────────────────────────────────────
 calcCur();
+loadRates();
 loadData();
 setInterval(() => { if (document.visibilityState === 'visible') loadData(); }, 45000);
+// FX rates move slowly — refresh roughly hourly rather than every 45s poll.
+setInterval(() => { if (document.visibilityState === 'visible') loadRates(); }, 60 * 60 * 1000);
 </script>
 </body>
 </html>
