@@ -123,7 +123,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .tour-wrap{overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
 .tour-wrap::-webkit-scrollbar{display:none}
 .ttbl{border-collapse:collapse;table-layout:fixed;width:100%;background:var(--bg2)}
-.ttbl th{color:var(--text4);font-weight:500;padding:5px 3px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;font-size:9px;white-space:nowrap;overflow:hidden;line-height:1.6}
+.ttbl th{color:var(--text2);font-weight:600;padding:5px 3px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;font-size:11px;white-space:nowrap;overflow:hidden;line-height:1.6}
 .ttbl th.lft{text-align:left;padding-left:4px;position:sticky;left:0;background:var(--bg2);z-index:2}
 .ttbl td{height:34px;padding:0 3px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;overflow:hidden}
 .ttbl td.nm{text-align:left;color:var(--text);font-size:11px;font-weight:600;white-space:nowrap;padding-left:4px;position:sticky;left:0;background:var(--bg2);z-index:1;box-shadow:2px 0 3px -2px rgba(0,0,0,.15)}
@@ -571,7 +571,7 @@ function renderTours() {
     </tr>
     <tr>
       <th class="tsep"></th>
-      ${defs.map(() => `<th class="tsep" style="color:var(--green);font-size:8px">T</th><th style="color:var(--amber);font-size:8px">V</th>`).join('')}
+      ${defs.map(() => `<th class="tsep" style="color:var(--green);font-size:10px">T</th><th style="color:var(--amber);font-size:10px">V</th>`).join('')}
     </tr>`;
 
   const rows = tours.rows;
@@ -694,8 +694,10 @@ function renderTourTotals() {
   if (tipPen) tipRows += mkRow('Collected in PEN', 'S/' + tipPen.toFixed(2), 'tot-pen');
   html += mkBlock('Tips', tipRows || mkRow('No tips recorded yet', '', 'tot-lbl'));
 
-  let grandUsd = tipUsdN * tours.tipPrice;
-  let grandPen = tipPen;
+  // Tips are broken out in their own block above and deliberately excluded
+  // from the grand total — this is meant to be the tour-purchases total only.
+  let grandUsd = 0;
+  let grandPen = 0;
   defs.forEach((d, ti) => {
     const usdN = rows.filter(r => r.tours[ti].v.currency === 'USD').length;
     const pen = rows.filter(r => r.tours[ti].v.currency === 'PEN').reduce((s, r) => s + r.tours[ti].v.amount, 0);
