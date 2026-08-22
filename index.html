@@ -103,6 +103,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:8px;padding:3px 8px;color:var(--yellow);font-size:10px;text-decoration:none;margin-left:auto;flex-shrink:0;white-space:nowrap;font-weight:600}
 .latam-link i{font-size:12px}
 .arr-ck{flex-shrink:0}
+.pax-col-hdr{display:flex;padding:0 12px 5px}
+.pax-col-hdr span{width:18px;flex-shrink:0;font-size:8px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--text4);text-align:center;white-space:nowrap;overflow:visible}
 /* ─── CHECKLIST SCREEN ──────────────────────────────────────────── */
 .chk-row{display:flex;align-items:flex-start;gap:11px;padding:10px 13px;border-bottom:1px solid var(--border)}
 .chk-row:last-child{border-bottom:none}
@@ -161,10 +163,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
 /* tickets */
 .tkt-sec{background:var(--bg2);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden}
-.tkt-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;cursor:pointer;user-select:none}
+.tkt-hdr{display:flex;flex-direction:column;gap:3px;padding:11px 13px;cursor:pointer;user-select:none}
+.tkt-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .tkt-title{color:var(--text);font-size:13px;font-weight:600}
-.tkt-meta{display:flex;align-items:center;gap:8px}
-.tkt-dt{color:var(--text3);font-size:11px}
+.tkt-meta{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.tkt-dt{color:var(--text3);font-size:11px;text-align:right}
 .tkt-badge{background:var(--bg3);border-radius:10px;padding:2px 8px;color:var(--text3);font-size:10px}
 .tkt-badge.has{background:var(--green-bg);color:var(--green)}
 .tkt-chev{color:var(--text4);font-size:14px;transition:transform .2s}
@@ -239,7 +242,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
     <div class="screen" id="screen-passengers">
       <div class="sum-grid" id="pax-summary"></div>
-      <div class="sec-label">SCL→LIM boarding pass status</div>
+      <div class="sec-label">Check-in and boarding pass status</div>
+      <div class="pax-col-hdr"><span>Arrived</span></div>
       <div id="pax-list"><div class="empty-hint">Loading…</div></div>
     </div>
 
@@ -343,7 +347,17 @@ if ('serviceWorker' in navigator) {
 // ─── SMALL HELPERS ───────────────────────────────────────────────
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function initials(name) { return (name || '').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '?'; }
+function stripEmoji(s) { return String(s || '').replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '').trim(); }
 const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+// "11:15 am" -> "11:15", "8am / 9am cir.3" -> "08:00 / 09:00 cir.3" — converts
+// every 12-hour time found in a free-form string, leaving the rest as-is.
+function to24h(s) {
+  return String(s || '').replace(/(\d{1,2})(?::(\d{2}))?\s*([ap]\.?m\.?)/gi, (_, h, mm, ap) => {
+    let hh = parseInt(h, 10) % 12;
+    if (/^p/i.test(ap)) hh += 12;
+    return String(hh).padStart(2, '0') + ':' + (mm || '00');
+  });
+}
 // "12/08/2026" (dd/MM/yyyy, as sent by the Apps Script backend) -> "12 Aug"
 function shortDate(d) {
   const m = String(d || '').match(/^(\d{1,2})\/(\d{1,2})\/\d{2,4}$/);
@@ -463,10 +477,12 @@ function renderPassengers() {
     const ok = /downloaded/i.test(p.boardingStatus);
     const failed = /fail|error/i.test(p.boardingStatus);
     const pillClass = ok ? 'g' : failed ? 'r' : 'a';
-    const pillTxt = p.boardingStatus || 'Pending';
+    const pillTxt = stripEmoji(p.boardingStatus) || 'Pending';
     const isYenrri = p.id === '0';
     return `<div class="pax-row">
-      ${isYenrri ? '' : `<div class="ck arr-ck${p.arrived ? ' y' : ''}" title="Arrived at airport" onclick="toggleArrived('${p.id}', this)"></div>`}
+      ${isYenrri
+        ? '<div class="ck arr-ck" style="visibility:hidden"></div>'
+        : `<div class="ck arr-ck${p.arrived ? ' y' : ''}" title="Arrived at airport" onclick="toggleArrived('${p.id}', this)"></div>`}
       <div class="av">${esc(initials(p.name))}</div>
       <div style="flex:1"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
       ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
@@ -699,13 +715,16 @@ function renderTickets() {
   list.innerHTML = tickets.ticketDefs.map((def, di) => {
     const paxRows = tickets.rows;
     const checkedCount = paxRows.filter(r => r.checks[di] && r.checks[di].checked).length;
-    const meta = [shortDate(def.date), def.time].filter(Boolean).join(' · ');
+    const meta = [shortDate(def.date), to24h(def.time)].filter(Boolean).join(' · ');
     return `<div class="tkt-sec">
       <div class="tkt-hdr" onclick="toggleTicketSection(this)">
-        <span class="tkt-title">${esc(def.title)}</span>
-        <div class="tkt-meta">${meta ? `<span class="tkt-dt">${esc(meta)}</span>` : ''}
-          <span class="tkt-badge${checkedCount ? ' has' : ''}" id="tb${di}">${checkedCount}/${paxRows.length}</span>
-          <i class="ti ti-chevron-down tkt-chev"></i></div>
+        <div class="tkt-top">
+          <span class="tkt-title">${esc(def.title)}</span>
+          <div class="tkt-meta">
+            <span class="tkt-badge${checkedCount ? ' has' : ''}" id="tb${di}">${checkedCount}/${paxRows.length}</span>
+            <i class="ti ti-chevron-down tkt-chev"></i></div>
+        </div>
+        ${meta ? `<div class="tkt-dt">${esc(meta)}</div>` : ''}
       </div>
       <div class="tkt-body">
         ${paxRows.map(r => {

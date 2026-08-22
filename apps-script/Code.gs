@@ -193,12 +193,20 @@ function getChecklist_() {
   let current = null;
   for (let r = 0; r < rows.length; r++) {
     const row = rows[r];
-    const a = String(row[0] || '').trim();
+    const aRaw = row[0];
+    const a = String(aRaw == null ? '' : aRaw).trim();
+    const text = String(row[1] || '').trim();
     if (/^Day\s+\d+/i.test(a)) {
-      current = { day: a, title: row[1] || '', items: [] };
+      current = { day: a, title: text, items: [] };
       days.push(current);
-    } else if ((a.toUpperCase() === 'TRUE' || a.toUpperCase() === 'FALSE') && current) {
-      current.items.push({ row: r + 1, text: row[1] || '', done: a.toUpperCase() === 'TRUE' });
+    } else if (current && text) {
+      // A checkbox that has never been touched comes back as an empty
+      // string, not FALSE — checking strictly for "TRUE"/"FALSE" text was
+      // silently dropping every never-checked item (which was most of the
+      // future days). Any row with item text under a day counts as an
+      // item regardless of what's literally in the checkbox cell; bool_()
+      // already treats blank/anything-but-TRUE as not done.
+      current.items.push({ row: r + 1, text: text, done: bool_(aRaw) });
     }
   }
   return days;
