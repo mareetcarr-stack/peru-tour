@@ -1,7 +1,7 @@
 // Minimal service worker: cache the app shell so the lock screen still
 // opens offline. Live trip data always requires a network round-trip to
 // the Apps Script backend, so we deliberately do NOT cache API responses.
-const SHELL_CACHE = 'peru-tour-shell-v1';
+const SHELL_CACHE = 'peru-tour-shell-v2';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -28,14 +28,29 @@ self.addEventListener('activate', (event) => {
 });
 
 self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
+  const req = event.request;
+  const url = req.url;
   // Never intercept calls to the Apps Script backend — always go live.
   if (url.includes('script.google.com')) return;
 
+  // Network-first for the HTML shell itself. This file changes with every
+  // deploy (including config like the Apps Script URL) — cache-first here
+  // means a device can get stuck forever serving a stale, possibly-broken
+  // config after a deploy, with no obvious way to tell. Only fall back to
+  // the cached copy when actually offline.
+  if (req.mode === 'navigate' || url.endsWith('/index.html') || url.endsWith('/')) {
+    event.respondWith(
+      fetch(req).then((res) => {
+        caches.open(SHELL_CACHE).then((c) => c.put(req, res.clone()));
+        return res;
+      }).catch(() => caches.match(req))
+    );
+    return;
+  }
+
+  // Cache-first for static assets (icons, manifest, icon font) — these
+  // rarely change and this keeps things fast / usable offline.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).catch(() => cached);
-    })
+    caches.match(req).then((cached) => cached || fetch(req).catch(() => cached))
   );
 });
