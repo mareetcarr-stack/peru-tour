@@ -311,14 +311,30 @@ function getRecs_() {
   return { restaurants: restaurants, sightseeing: sightseeing };
 }
 
+// Reads the actual dropdown list off an existing validated cell, so the
+// app always offers exactly the same options as the Sheet itself — no
+// hardcoded list to fall out of sync if someone edits the validation rule.
+function getDropdownOptions_(sheet, row, col, fallback) {
+  try {
+    const dv = sheet.getRange(row, col).getDataValidation();
+    if (!dv) return fallback;
+    const values = dv.getCriteriaValues();
+    return Array.isArray(values[0]) && values[0].length ? values[0] : fallback;
+  } catch (e) {
+    return fallback;
+  }
+}
+
 function getReceipts_() {
-  const rows = sheet_('receipts').getDataRange().getValues();
+  const sh = sheet_('receipts');
+  const rows = sh.getDataRange().getValues();
   const out = [];
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
     const description = String(row[0] || '').trim();
     if (!description) continue; // skip blank rows
     out.push({
+      row: r + 1,
       description: description,
       observation: String(row[1] || '').trim(),
       paymentMethod: String(row[2] || '').trim(),
@@ -326,7 +342,11 @@ function getReceipts_() {
       amount: parseMoney_(row[4]),
     });
   }
-  return out;
+  return {
+    rows: out,
+    paymentMethods: getDropdownOptions_(sh, 2, 3, ['Deposito en cuenta', 'Efectivo - en los demas casos']),
+    currencies: getDropdownOptions_(sh, 2, 4, ['PEN', 'USD']),
+  };
 }
 
 // ─── WRITE ───────────────────────────────────────────────────────────────
@@ -343,6 +363,8 @@ function handleWrite_(body) {
     case 'toggleTicket': return toggleTicket_(body.id, body.col, body.value);
     case 'setBirthday': return setBirthday_(body.id, body.value);
     case 'setDiet': return setDiet_(body.id, body.value);
+    case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
+    case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
     default: throw new Error('Unknown write action: ' + body.action);
   }
 }
@@ -444,4 +466,30 @@ function setDiet_(id, value) {
   const row = findRowById_(sh, id, 1);
   sh.getRange(row, 6).setValue(value); // col F = Dietary Requirements
   return { id: id, value: value };
+}
+
+const RECEIPT_COLS_ = { description: 1, observation: 2, paymentMethod: 3, currency: 4, amount: 5 };
+
+function addReceipt_(description, observation, paymentMethod, currency, amount) {
+  const sh = sheet_('receipts');
+  const rows = sh.getDataRange().getValues();
+  const row = rows.length + 1; // first fully blank row after the existing data
+  sh.getRange(row, 1, 1, 5).setValues([[description || '', observation || '', paymentMethod || '', currency || '', amount || '']]);
+  // Row 2 already carries the dropdown validation for Medio de Pago / Tipo de
+  // Moneda — copy it onto the new row so it stays a proper dropdown in the
+  // Sheet, not just plain text that happens to match.
+  ['paymentMethod', 'currency'].forEach((key) => {
+    const col = RECEIPT_COLS_[key];
+    const dv = sh.getRange(2, col).getDataValidation();
+    if (dv) sh.getRange(row, col).setDataValidation(dv);
+  });
+  return { row: row, description: description, observation: observation, paymentMethod: paymentMethod, currency: currency, amount: amount };
+}
+
+function setReceiptField_(row, field, value) {
+  const col = RECEIPT_COLS_[field];
+  if (!col) throw new Error('Unknown receipt field: ' + field);
+  const sh = sheet_('receipts');
+  sh.getRange(row, col).setValue(field === 'amount' ? (parseFloat(value) || 0) : value);
+  return { row: row, field: field, value: value };
 }

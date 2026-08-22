@@ -841,28 +841,56 @@ function renderPlaces() {
 }
 function waShare(url) { window.location.href = 'whatsapp://send?text=' + encodeURIComponent(url); }
 
-// ─── RECEIPTS ────────────────────────────────────────────────────
-const CUR_SYM = { USD: '$', PEN: 'S/', AUD: 'A$' };
+// ─── RECEIPTS (editable — dropdowns mirror the Sheet's own validation) ──
 function renderReceipts() {
   if (!DATA) return;
-  const receipts = DATA.receipts || [];
+  const receipts = DATA.receipts || { rows: [], paymentMethods: [], currencies: [] };
+  const rows = receipts.rows || [];
+  const paymentMethods = receipts.paymentMethods || [];
+  const currencies = receipts.currencies || [];
   const list = document.getElementById('receipts-list');
-  if (!receipts.length) { list.innerHTML = '<div class="empty-hint">No receipts yet</div>'; return; }
-  list.innerHTML = receipts.map((r) => {
-    const sym = CUR_SYM[r.currency] || (r.currency ? r.currency + ' ' : '');
-    const amountTxt = r.amount ? `${sym}${r.amount.toFixed(2)}` : '—';
-    return `<div class="rec-card">
-      <div class="rec-city">${esc(r.observation || ' ')}</div>
-      <div class="rec-lnk" style="border-bottom:none;padding-bottom:0">
-        <div class="rec-left" style="flex-direction:column;align-items:flex-start;gap:2px">
-          <span class="rec-txt" style="color:var(--text)">${esc(r.description)}</span>
-          ${r.paymentMethod ? `<span style="color:var(--text4);font-size:10px">${esc(r.paymentMethod)}</span>` : ''}
-        </div>
-        <span style="color:var(--green);font-size:13px;font-weight:700;flex-shrink:0;margin-left:8px">${esc(amountTxt)}</span>
-      </div>
-    </div>`;
-  }).join('');
+  const cardsHtml = rows.map((r) => receiptCardHtml_(r, paymentMethods, currencies)).join('');
+  list.innerHTML = (cardsHtml || '<div class="empty-hint">No receipts yet</div>') +
+    `<div class="wa-btn" style="justify-content:center;width:100%;margin-top:2px" onclick="addReceiptRow()"><i class="ti ti-plus"></i>Add receipt</div>`;
 }
+
+function receiptCardHtml_(r, paymentMethods, currencies) {
+  // If a row's current value isn't in the sheet's dropdown list (old data,
+  // or the list changed since), keep it selectable rather than silently
+  // swapping it out from under the user.
+  const pmOptions = (!r.paymentMethod || paymentMethods.includes(r.paymentMethod)) ? paymentMethods : [r.paymentMethod, ...paymentMethods];
+  const curOptions = (!r.currency || currencies.includes(r.currency)) ? currencies : [r.currency, ...currencies];
+  return `<div class="rec-card">
+    <input class="diet-input" placeholder="Description" value="${esc(r.description)}" onchange="setReceiptField(${r.row},'description',this.value)">
+    <input class="diet-input" style="margin-top:6px" placeholder="Booking ref / observation" value="${esc(r.observation)}" onchange="setReceiptField(${r.row},'observation',this.value)">
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <select class="diet-input" style="flex:2;min-width:0" onchange="setReceiptField(${r.row},'paymentMethod',this.value)">
+        ${pmOptions.map(m => `<option value="${esc(m)}"${m === r.paymentMethod ? ' selected' : ''}>${esc(m)}</option>`).join('')}
+      </select>
+      <select class="diet-input" style="flex:0 0 64px" onchange="setReceiptField(${r.row},'currency',this.value)">
+        ${curOptions.map(c => `<option value="${esc(c)}"${c === r.currency ? ' selected' : ''}>${esc(c)}</option>`).join('')}
+      </select>
+      <input class="diet-input" type="number" style="flex:0 0 84px" placeholder="0.00" value="${r.amount || ''}" onchange="setReceiptField(${r.row},'amount',this.value)">
+    </div>
+  </div>`;
+}
+
+function setReceiptField(row, field, value) {
+  const r = (DATA.receipts.rows || []).find(x => x.row === row);
+  if (r) r[field] = field === 'amount' ? (parseFloat(value) || 0) : value;
+  write({ action: 'setReceiptField', row: row, field: field, value: value });
+}
+
+function addReceiptRow() {
+  const paymentMethod = (DATA.receipts.paymentMethods || [])[0] || '';
+  const currency = (DATA.receipts.currencies || [])[0] || '';
+  write({ action: 'addReceipt', description: '', observation: '', paymentMethod: paymentMethod, currency: currency, amount: 0 })
+    .then((res) => {
+      DATA.receipts.rows.push({ row: res.result.row, description: '', observation: '', paymentMethod: paymentMethod, currency: currency, amount: 0 });
+      renderReceipts();
+    });
+}
+
 
 // ─── SUB-TABS (Tours screen) ─────────────────────────────────────
 function switchTab(view, el) {
