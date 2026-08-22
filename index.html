@@ -6,39 +6,42 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Peru Tour">
-<meta name="theme-color" content="#0f0f0f">
+<meta name="theme-color" content="#ffffff">
 <title>Peru Tour Manager</title>
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icons/icon-192.png">
 <link rel="icon" href="icons/icon-192.png">
-<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.19.0/iconfont/tabler-icons.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.46.0/tabler-icons.min.css">
 <style>
 /* ─── RESET & BASE ─────────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
 :root{
-  --bg:#0f0f0f;--bg2:#1a1a1a;--bg3:#222;--bg4:#111;
-  --border:#2a2a2a;--border2:#333;
-  --text:#fff;--text2:#ccc;--text3:#888;--text4:#555;
-  --red:#c8102e;--red-bg:#1e0d0d;--red-border:#c8102e;
-  --green:#3dbd75;--green-bg:#0d2e1a;--green-border:#1e5e1e;
-  --amber:#f59e0b;--amber-bg:#2e1a0d;--amber-border:#4d3800;
-  --blue:#60a5fa;--blue-bg:#0d1a2e;--blue-border:#1e1e50;
-  --purple:#a78bfa;--purple-bg:#1e1a2e;
+  /* Light theme. --dark-input-* stay dark on purpose (textboxes keep a black background). */
+  --bg:#f3f3f4;--bg2:#ffffff;--bg3:#ececee;--bg4:#e4e4e7;
+  --border:#e3e3e6;--border2:#d3d3d8;
+  --text:#111113;--text2:#3a3a3d;--text3:#6f6f75;--text4:#9c9ca3;
+  --red:#c8102e;--red-bg:#fdeaed;--red-border:#f2b9c4;
+  --green:#1c8a4c;--green-bg:#e7f6ed;--green-border:#bfe6cd;
+  --amber:#a6690a;--amber-bg:#fdf0da;--amber-border:#f0d9a3;
+  --blue:#2563eb;--blue-bg:#e9f0fe;--blue-border:#c7dbfb;
+  --purple:#7c3aed;--purple-bg:#f1e8fe;
+  --yellow:#8a6d00;--yellow-bg:#fdf3c9;--yellow-border:#eeddA0;
+  --dark-bg:#111113;--dark-border:#333336;--dark-text:#fff;
   --nav-h:64px;
   font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
 }
 html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
 /* ─── APP SHELL ────────────────────────────────────────────────── */
-#app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;position:relative;overflow:hidden}
+#app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;position:relative;overflow:hidden;background:var(--bg)}
 #topbar{padding:12px 20px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg)}
-#topbar h1{font-size:20px;font-weight:500;color:var(--text)}
+#topbar h1{font-size:20px;font-weight:600;color:var(--text)}
 .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
 .badge.red{background:var(--red);color:#fff}
 .badge.amb{background:var(--amber-bg);color:var(--amber)}
 .badge.none{display:none}
 #topbar-right{display:flex;align-items:center;gap:8px}
-#sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text4);flex-shrink:0;transition:background .2s}
+#sync-dot{width:7px;height:7px;border-radius:50%;background:var(--border2);flex-shrink:0;transition:background .2s}
 #sync-dot.saving{background:var(--amber);animation:pulse 1s infinite}
 #sync-dot.saved{background:var(--green)}
 #sync-dot.error{background:var(--red)}
@@ -47,7 +50,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .screen{position:absolute;inset:0;overflow-y:auto;padding:0 16px 16px;display:none;scrollbar-width:none}
 .screen::-webkit-scrollbar{display:none}
 .screen.active{display:block}
-#navbar{height:var(--nav-h);background:#141414;border-top:.5px solid var(--border);display:flex;justify-content:space-around;align-items:center;flex-shrink:0}
+#navbar{height:var(--nav-h);background:#ffffff;border-top:1px solid var(--border);display:flex;justify-content:space-around;align-items:center;flex-shrink:0}
 .nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 10px;border-radius:10px;min-width:44px}
 .nav-item i{font-size:22px;color:var(--text4)}
 .nav-item span{font-size:9px;font-weight:500;color:var(--text4)}
@@ -55,173 +58,163 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
 /* ─── SHARED COMPONENTS ────────────────────────────────────────── */
 .sec-label{color:var(--text4);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin:14px 0 7px}
-.card{background:var(--bg2);border-radius:14px;padding:12px 14px;margin-bottom:9px;border:.5px solid var(--border)}
+.card{background:var(--bg2);border-radius:14px;padding:12px 14px;margin-bottom:9px;border:1px solid var(--border);box-shadow:0 1px 2px rgba(0,0,0,.03)}
 .card.red-border{border-color:var(--red)}
 .card.amb-border{border-color:#d97706}
-.pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap;min-width:88px;text-align:center}
+.card.green-border{border-color:var(--green)}
+.card.blue-border{border-color:var(--blue)}
+.pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:600;white-space:nowrap;min-width:88px;text-align:center}
 .pill.g{background:var(--green-bg);color:var(--green)}
 .pill.a{background:var(--amber-bg);color:var(--amber)}
-.pill.r{background:var(--red-bg);color:#f87171}
+.pill.r{background:var(--red-bg);color:var(--red)}
 .pill.b{background:var(--blue-bg);color:var(--blue)}
 .pill.p{background:var(--purple-bg);color:var(--purple)}
+.pill.y{background:var(--yellow-bg);color:var(--yellow)}
 .hint{color:var(--text4);font-size:10px;margin-bottom:10px;line-height:1.5}
-.divider{height:.5px;background:var(--border);margin:8px 0}
-.alert-bar{background:var(--red-bg);border:.5px solid var(--red);border-radius:11px;padding:9px 13px;margin-bottom:12px;display:flex;align-items:center;gap:9px}
+.divider{height:1px;background:var(--border);margin:8px 0}
+.alert-bar{background:var(--red-bg);border:1px solid var(--red-border);border-radius:11px;padding:9px 13px;margin-bottom:12px;display:flex;align-items:center;gap:9px}
 .alert-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
-.alert-text{color:#f87171;font-size:11px;line-height:1.4}
+.alert-text{color:var(--red);font-size:11px;line-height:1.4}
 .empty-hint{color:var(--text4);font-size:12px;text-align:center;padding:30px 10px}
 
 /* ─── FLIGHTS SCREEN ────────────────────────────────────────────── */
 .fl-top{display:flex;justify-content:space-between;align-items:flex-start}
-.fl-num{color:var(--text);font-size:15px;font-weight:500}
+.fl-left{display:flex;align-items:center;gap:10px}
+.fl-icon{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px}
+.fl-icon.g{background:var(--green-bg);color:var(--green)}
+.fl-icon.a{background:var(--amber-bg);color:var(--amber)}
+.fl-icon.b{background:var(--blue-bg);color:var(--blue)}
+.fl-num{color:var(--text);font-size:15px;font-weight:600}
 .fl-sub{color:var(--text3);font-size:11px;margin-top:2px}
-.fl-status{color:var(--text3);font-size:11px;margin-top:8px;line-height:1.4;padding-top:8px;border-top:.5px solid var(--border)}
-.fl-link{color:var(--blue);font-size:11px;margin-top:6px;display:inline-block}
+.fl-status{color:var(--text3);font-size:11px;margin-top:8px;line-height:1.4;padding-top:8px;border-top:1px solid var(--border)}
+.fl-link{color:var(--blue);font-size:11px;margin-top:6px;display:inline-block;font-weight:600}
 
 /* ─── PASSENGERS SCREEN ────────────────────────────────────────── */
 .sum-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:14px}
-.sum-card{background:var(--bg2);border-radius:11px;padding:11px 13px;border:.5px solid var(--border)}
-.sum-n{color:var(--text);font-size:22px;font-weight:500}
+.sum-card{background:var(--bg2);border-radius:11px;padding:11px 13px;border:1px solid var(--border)}
+.sum-n{color:var(--text);font-size:22px;font-weight:700}
 .sum-l{color:var(--text4);font-size:10px;margin-top:2px}
-.pax-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px;border:.5px solid var(--border)}
-.av{width:32px;height:32px;border-radius:50%;background:#1e2a3a;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:11px;font-weight:500;flex-shrink:0}
-.pax-name{color:var(--text);font-size:13px;font-weight:500}
+.pax-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px;border:1px solid var(--border)}
+.av{width:32px;height:32px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:11px;font-weight:700;flex-shrink:0}
+.pax-name{color:var(--text);font-size:13px;font-weight:600}
 .pax-detail{color:var(--text4);font-size:10px;margin-top:1px}
-.latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--red-bg);border:.5px solid var(--red);border-radius:8px;padding:3px 8px;color:#f87171;font-size:10px;text-decoration:none;margin-left:auto;flex-shrink:0;white-space:nowrap}
+.latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:8px;padding:3px 8px;color:var(--yellow);font-size:10px;text-decoration:none;margin-left:auto;flex-shrink:0;white-space:nowrap;font-weight:600}
 .latam-link i{font-size:12px}
+.arr-ck{flex-shrink:0}
 
 /* ─── CHECKLIST SCREEN ──────────────────────────────────────────── */
-.chk-row{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:.5px solid #1e1e1e}
+.chk-row{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:1px solid var(--border)}
 .chk-row:last-child{border-bottom:none}
-.chk-box{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.chk-box{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer;background:#fff}
 .chk-box.done{background:var(--green-bg);border-color:var(--green)}
 .chk-box.done::after{content:'✓';color:var(--green);font-size:12px}
 .chk-lbl{color:var(--text2);font-size:13px;line-height:1.4}
 .chk-lbl.done{color:var(--text4);text-decoration:line-through}
-.day-hdr{color:var(--text);font-size:12px;font-weight:500;background:var(--bg3);border-radius:7px;padding:6px 10px;margin:10px 0 4px}
+.day-hdr{color:var(--text);font-size:12px;font-weight:700;background:var(--bg3);border-radius:7px;padding:6px 10px;margin:10px 0 4px}
 
 /* ─── TOURS SCREEN ──────────────────────────────────────────────── */
 .tabs{display:flex;gap:5px;margin-bottom:11px;overflow-x:auto;scrollbar-width:none}
 .tabs::-webkit-scrollbar{display:none}
-.tab{background:var(--bg2);border:.5px solid var(--border);border-radius:20px;padding:4px 11px;color:var(--text4);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.tab{background:var(--bg2);border:1px solid var(--border);border-radius:20px;padding:4px 11px;color:var(--text4);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .tab.active{background:var(--red);border-color:var(--red);color:#fff}
 
 .tour-wrap{overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
 .tour-wrap::-webkit-scrollbar{display:none}
 .ttbl{border-collapse:collapse;table-layout:fixed;width:100%}
-.ttbl th{color:var(--text4);font-weight:500;padding:5px 2px;border-bottom:.5px solid var(--border);text-align:center;font-size:9px;white-space:nowrap;overflow:hidden}
-.ttbl th.lft{text-align:left;padding-left:4px}
-.ttbl td{height:30px;padding:0 2px;border-bottom:.5px solid #161616;text-align:center;vertical-align:middle;overflow:hidden}
-.ttbl td.nm{text-align:left;color:var(--text);font-size:11px;white-space:nowrap;padding-left:4px}
+.ttbl th{color:var(--text4);font-weight:500;padding:5px 3px;border-bottom:1px solid var(--border);text-align:center;font-size:9px;white-space:nowrap;overflow:hidden}
+.ttbl th.lft{text-align:left;padding-left:4px;position:sticky;left:0;background:var(--bg2);z-index:2}
+.ttbl td{height:34px;padding:0 3px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;overflow:hidden}
+.ttbl td.nm{text-align:left;color:var(--text);font-size:11px;font-weight:600;white-space:nowrap;padding-left:4px;position:sticky;left:0;background:var(--bg2);z-index:1;box-shadow:2px 0 3px -2px rgba(0,0,0,.15)}
 .tsep{border-left:1.5px solid var(--border)}
-.cnt-row td{border-top:.5px solid var(--border);border-bottom:none;height:28px;font-size:10px;font-weight:500}
-.thdr{background:#141414;padding:3px 2px}
-.ck{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;vertical-align:middle}
+.cnt-row td{border-top:1px solid var(--border2);border-bottom:none;height:28px;font-size:10px;font-weight:600}
+.thdr{background:var(--bg3);padding:3px 2px}
+.price-edit{width:38px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:4px;color:var(--dark-text);font-size:9px;padding:1px 2px;text-align:center;margin-top:2px;font-family:inherit}
+.ck{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;vertical-align:middle;background:#fff}
 .ck.y{background:var(--green-bg);border-color:var(--green)}.ck.y::after{content:'✓';color:var(--green);font-size:9px}
+.cc{display:inline-flex;flex-direction:column;align-items:center;gap:2px;width:100%}
+.cc-lbl{font-size:9px;font-weight:700;padding:2px 5px;border-radius:4px;cursor:pointer;user-select:none;border:1px solid var(--border2);background:#fff;color:var(--text4);white-space:nowrap}
+.cc-lbl.usd{background:var(--green-bg);border-color:var(--green-border);color:var(--green)}
+.cc-lbl.pen{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
+.cc-inp{width:44px;font-size:9px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:3px;color:var(--dark-text);padding:2px;text-align:center;outline:none;font-family:inherit;-moz-appearance:textfield}
+.cc-inp::-webkit-outer-spin-button,.cc-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.row-total{font-size:10px;color:var(--text2);line-height:1.5;white-space:nowrap}
+.row-total b{color:var(--green)}
+.row-total b.pen{color:var(--amber)}
 
 /* totals */
-.tot-block{background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:.5px solid var(--border)}
-.tot-title{color:var(--text3);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
-.tot-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid #1e1e1e}
+.tot-block{background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--border)}
+.tot-title{color:var(--text3);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.tot-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)}
 .tot-row:last-child{border-bottom:none}
 .tot-lbl{color:var(--text4);font-size:11px}
-.tot-usd{color:var(--green);font-size:12px;font-weight:500}
-.grand-block{background:var(--bg2);border-radius:12px;padding:12px 14px;border:.5px solid var(--border2);margin-bottom:8px}
-.grand-title{color:var(--text2);font-size:11px;font-weight:500;margin-bottom:8px}
-.grand-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid #1e1e1e}
+.tot-usd{color:var(--green);font-size:12px;font-weight:700}
+.tot-pen{color:var(--amber);font-size:12px;font-weight:700}
+.grand-block{background:var(--bg2);border-radius:12px;padding:12px 14px;border:1px solid var(--border2);margin-bottom:8px}
+.grand-title{color:var(--text2);font-size:11px;font-weight:600;margin-bottom:8px}
+.grand-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)}
 .grand-row:last-child{border-bottom:none}
-.grand-lbl{font-size:12px;font-weight:600;color:var(--green)}
-.grand-val{font-size:13px;font-weight:500;color:var(--text)}
+.grand-lbl{font-size:12px;font-weight:700}
+.grand-lbl.usd{color:var(--green)}
+.grand-lbl.pen{color:var(--amber)}
+.grand-val{font-size:13px;font-weight:700;color:var(--text)}
 
 /* tickets */
-.tkt-sec{background:var(--bg2);border-radius:12px;margin-bottom:8px;border:.5px solid var(--border);overflow:hidden}
+.tkt-sec{background:var(--bg2);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden}
 .tkt-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;cursor:pointer;user-select:none}
-.tkt-title{color:var(--text);font-size:13px;font-weight:500}
+.tkt-title{color:var(--text);font-size:13px;font-weight:600}
 .tkt-meta{display:flex;align-items:center;gap:8px}
 .tkt-dt{color:var(--text3);font-size:11px}
 .tkt-badge{background:var(--bg3);border-radius:10px;padding:2px 8px;color:var(--text3);font-size:10px}
 .tkt-badge.has{background:var(--green-bg);color:var(--green)}
 .tkt-chev{color:var(--text4);font-size:14px;transition:transform .2s}
 .tkt-chev.open{transform:rotate(180deg)}
-.tkt-body{display:none;border-top:.5px solid var(--border)}
+.tkt-body{display:none;border-top:1px solid var(--border)}
 .tkt-body.open{display:block}
-.tkt-pax{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:.5px solid #161616}
+.tkt-pax{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:1px solid var(--border)}
 .tkt-pax:last-child{border-bottom:none}
-.tkt-av{width:28px;height:28px;border-radius:50%;background:#1e2a3a;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:10px;font-weight:500;flex-shrink:0}
-.tkt-av.warn{background:#2e1a1a;color:#f87171}
+.tkt-av{width:28px;height:28px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:10px;font-weight:700;flex-shrink:0}
+.tkt-av.warn{background:var(--red-bg);color:var(--red)}
 .tkt-pname{color:var(--text2);font-size:12px;flex:1}
-.tkt-pname.warn{color:#f87171}
+.tkt-pname.warn{color:var(--red)}
 .tkt-pp{font-family:ui-monospace,monospace;color:var(--blue);font-size:10px;letter-spacing:.04em;margin-right:4px}
-.tkt-pp.warn{color:#f87171}
-.notes-area{margin:0 0 11px;background:var(--bg4);border-radius:8px;padding:8px 10px;border:.5px solid var(--red)}
-.notes-lbl{color:var(--text4);font-size:10px;margin-bottom:4px}
-.notes-area textarea{width:100%;background:transparent;border:none;color:var(--text2);font-size:12px;resize:none;height:48px;outline:none;font-family:inherit}
+.tkt-pp.warn{color:var(--red)}
+.notes-area{margin:0 0 11px;background:var(--dark-bg);border-radius:8px;padding:8px 10px;border:1px solid var(--red)}
+.notes-lbl{color:#aaa;font-size:10px;margin-bottom:4px}
+.notes-area textarea{width:100%;background:transparent;border:none;color:#fff;font-size:12px;resize:none;height:48px;outline:none;font-family:inherit}
 
 /* info & diet */
-.info-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;border:.5px solid var(--border)}
+.info-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;border:1px solid var(--border)}
 .info-top{display:flex;align-items:center;gap:10px}
-.diet-tag{font-size:10px;padding:2px 7px;border-radius:8px;display:inline-block;margin-top:3px}
-.diet-tag.none{background:var(--bg2);color:var(--text4);border:.5px solid var(--border)}
-.diet-tag.veg{background:var(--purple-bg);color:var(--purple)}
-.diet-tag.gf{background:var(--amber-bg);color:var(--amber)}
-.diet-tag.sf{background:var(--blue-bg);color:var(--blue)}
-.bday-btn{font-size:10px;padding:3px 8px;border-radius:8px;cursor:pointer;flex-shrink:0;border:none;font-family:inherit}
-.bday-btn.off{background:var(--bg3);color:var(--text4);border:.5px solid var(--border2)}
-.bday-btn.on{background:var(--green-bg);color:var(--green);border:.5px solid var(--green-border)}
-.bday-area{margin-top:8px;padding-top:8px;border-top:.5px solid var(--border);display:none;align-items:center;gap:8px}
+.diet-input{width:100%;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:8px;color:var(--dark-text);font-size:12px;padding:6px 9px;margin-top:8px;font-family:inherit;outline:none}
+.bday-btn{font-size:10px;padding:3px 8px;border-radius:8px;cursor:pointer;flex-shrink:0;border:none;font-family:inherit;font-weight:600}
+.bday-btn.off{background:var(--bg3);color:var(--text4);border:1px solid var(--border2)}
+.bday-btn.on{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
+.bday-area{margin-top:8px;padding-top:8px;border-top:1px solid var(--border);display:none;align-items:center;gap:8px}
 .bday-area.open{display:flex}
 .bday-lbl{color:var(--text4);font-size:11px;flex-shrink:0}
-.bday-input{background:var(--bg4);border:.5px solid var(--border2);border-radius:8px;color:var(--text2);font-size:11px;padding:4px 8px;flex:1}
+.bday-input{background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:8px;color:var(--dark-text);font-size:11px;padding:4px 8px;flex:1;color-scheme:dark}
 
 /* currency calculator */
-.cur-block{background:var(--bg2);border-radius:11px;padding:11px 13px;margin-bottom:8px;border:.5px solid var(--border)}
+.cur-block{background:var(--bg2);border-radius:11px;padding:11px 13px;margin-bottom:8px;border:1px solid var(--border)}
 .cur-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
 .cur-row:last-child{margin-bottom:0}
 .cur-lbl{color:var(--text3);font-size:11px;width:80px;flex-shrink:0}
-.cur-in{background:var(--bg4);border:.5px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:5px 9px;flex:1;min-width:0;font-family:inherit;outline:none}
-.cur-res{color:var(--green);font-size:13px;font-weight:500;min-width:72px;text-align:right}
+.cur-in{background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:8px;color:var(--dark-text);font-size:13px;padding:5px 9px;flex:1;min-width:0;font-family:inherit;outline:none}
+.cur-res{color:var(--green);font-size:13px;font-weight:700;min-width:72px;text-align:right}
 .cur-rate{color:var(--text4);font-size:10px;text-align:center;margin-top:4px}
 
 /* places */
-.rec-card{background:var(--bg2);border-radius:12px;padding:11px 13px;margin-bottom:8px;border:.5px solid var(--border)}
-.rec-city{color:var(--text3);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
-.rec-lnk{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:.5px solid #1e1e1e}
+.rec-card{background:var(--bg2);border-radius:12px;padding:11px 13px;margin-bottom:8px;border:1px solid var(--border)}
+.rec-city{color:var(--text3);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.rec-lnk{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border)}
 .rec-lnk:last-child{border-bottom:none}
 .rec-left{display:flex;align-items:center;gap:8px}
 .rec-icon{color:var(--red);font-size:15px}
 .rec-txt{color:var(--blue);font-size:12px}
-.wa-btn{background:var(--green-bg);border:.5px solid var(--green-border);border-radius:8px;padding:4px 9px;color:var(--green);font-size:10px;display:flex;align-items:center;gap:4px;cursor:pointer}
-
-/* ─── LOCK SCREEN ────────────────────────────────────────────────── */
-#lock{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;max-width:430px;margin:0 auto}
-#lock.hidden{display:none}
-#lock .logo{width:64px;height:64px;border-radius:16px;background:var(--red);display:flex;align-items:center;justify-content:center;margin-bottom:18px}
-#lock .logo i{font-size:32px;color:#fff}
-#lock h2{font-size:17px;font-weight:500;margin-bottom:6px}
-#lock p{color:var(--text4);font-size:12px;margin-bottom:24px}
-#pin-dots{display:flex;gap:14px;margin-bottom:26px}
-.pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border2);background:transparent}
-.pin-dot.filled{background:var(--red);border-color:var(--red)}
-#pin-pad{display:grid;grid-template-columns:repeat(3,64px);gap:14px}
-.pin-key{width:64px;height:64px;border-radius:50%;background:var(--bg2);border:.5px solid var(--border);color:var(--text);font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
-.pin-key:active{background:var(--bg3)}
-.pin-key.ghost{background:transparent;border:none}
-#lock-err{color:#f87171;font-size:12px;margin-top:16px;min-height:14px}
+.wa-btn{background:var(--green-bg);border:1px solid var(--green-border);border-radius:8px;padding:4px 9px;color:var(--green);font-size:10px;display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:600}
 </style>
 </head>
 <body>
-
-<!-- ══════════════════════════════════════════
-     LOCK SCREEN
-══════════════════════════════════════════ -->
-<div id="lock">
-  <div class="logo"><i class="ti ti-plane"></i></div>
-  <h2>Peru Tour Manager</h2>
-  <p>Enter PIN to continue</p>
-  <div id="pin-dots"></div>
-  <div id="pin-pad"></div>
-  <div id="lock-err"></div>
-</div>
 
 <div id="app">
 
@@ -262,9 +255,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
       <!-- OPTIONAL TOURS -->
       <div id="tab-tours">
-        <div class="hint">T = TripADeal (prepaid, tallies USD total) · V = booked with Valencia (paid direct, cash)</div>
+        <div class="hint">T = TripADeal (already prepaid, just a tick) · V = tap to cycle —/USD/PEN, PEN needs an amount · prices are editable</div>
         <div class="tour-wrap">
         <table class="ttbl">
+          <colgroup id="tour-colgroup"></colgroup>
           <thead id="tour-thead"></thead>
           <tbody id="tour-tbody"></tbody>
         </table>
@@ -289,8 +283,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
         <div class="sec-label">Tap a ticket type to expand</div>
         <div id="tickets-list"><div class="empty-hint">Loading…</div></div>
         <div class="notes-area">
-          <div class="notes-lbl">⚠ Notes (saved on this device only)</div>
-          <textarea id="ticket-notes" placeholder="e.g. Daniel Lund — no passport on file, follow up with agency" oninput="saveNotes(this.value)"></textarea>
+          <div class="notes-lbl">⚠ Notes (saved on this device only — not synced to the Sheet)</div>
+          <textarea id="ticket-notes" placeholder="Type notes here…" oninput="saveNotes(this.value)"></textarea>
         </div>
       </div>
 
@@ -334,8 +328,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
 <script>
 // ─── CONFIG ────────────────────────────────────────────────────────
-// Paste the Apps Script "Web app URL" here after deploying apps-script/Code.gs
-// (Extensions → Apps Script → Deploy → New deployment → Web app). See README.md.
+// Apps Script "Web app URL" (Extensions → Apps Script → Deploy → New
+// deployment → Web app). See README.md.
 const CONFIG = {
   APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycby0-SNX19SxU-KRk64b1ptP1NBjYghoIFri0GXTujx16vjGkh0wEh1WzGhXFNjG6JndeQ/exec',
 };
@@ -349,9 +343,7 @@ if ('serviceWorker' in navigator) {
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function initials(name) { return (name || '').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '?'; }
 
-// ─── AUTH / API ──────────────────────────────────────────────────
-let TOKEN = localStorage.getItem('ptm_token') || null;
-
+// ─── API (no PIN — the deployed URL itself is the only gate) ────
 function apiGet(params) {
   const url = CONFIG.APPS_SCRIPT_URL + '?' + new URLSearchParams(params).toString();
   return fetch(url).then(r => r.json());
@@ -362,7 +354,7 @@ function apiPost(payload) {
     // text/plain avoids a CORS preflight OPTIONS request (Apps Script can't
     // answer those) — the payload is still JSON, just parsed manually server-side.
     headers: { 'Content-Type': 'text/plain;charset=utf-8' },
-    body: JSON.stringify(Object.assign({ token: TOKEN }, payload)),
+    body: JSON.stringify(payload),
   }).then(r => r.json());
 }
 
@@ -386,79 +378,14 @@ function write(payload) {
   });
 }
 
-// ─── LOCK SCREEN / PIN PAD ───────────────────────────────────────
-let pinBuf = '';
-function buildPinPad() {
-  const pad = document.getElementById('pin-pad');
-  pad.innerHTML = '';
-  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
-  keys.forEach((k) => {
-    const el = document.createElement('div');
-    if (k === '') { el.className = 'pin-key ghost'; }
-    else {
-      el.className = 'pin-key';
-      el.textContent = k;
-      el.onclick = () => onPinKey(k);
-    }
-    pad.appendChild(el);
-  });
-  renderPinDots();
-}
-function renderPinDots() {
-  const dots = document.getElementById('pin-dots');
-  dots.innerHTML = '';
-  for (let i = 0; i < 4; i++) {
-    const d = document.createElement('div');
-    d.className = 'pin-dot' + (i < pinBuf.length ? ' filled' : '');
-    dots.appendChild(d);
-  }
-}
-function onPinKey(k) {
-  document.getElementById('lock-err').textContent = '';
-  if (k === '⌫') { pinBuf = pinBuf.slice(0, -1); renderPinDots(); return; }
-  if (pinBuf.length >= 4) return;
-  pinBuf += k;
-  renderPinDots();
-  if (pinBuf.length === 4) submitPin();
-}
-function submitPin() {
-  apiGet({ action: 'login', pin: pinBuf }).then((res) => {
-    if (!res.ok) {
-      document.getElementById('lock-err').textContent = res.error || 'Wrong PIN';
-      pinBuf = ''; renderPinDots();
-      return;
-    }
-    TOKEN = res.token;
-    localStorage.setItem('ptm_token', TOKEN);
-    unlock();
-  }).catch(() => {
-    document.getElementById('lock-err').textContent = 'Network error — check your connection';
-    pinBuf = ''; renderPinDots();
-  });
-}
-function unlock() {
-  document.getElementById('lock').classList.add('hidden');
-  loadData();
-  setInterval(() => { if (document.visibilityState === 'visible') loadData(); }, 45000);
-}
-
 // ─── DATA LOAD / RENDER ALL ──────────────────────────────────────
 let DATA = null;
 function loadData() {
-  if (!TOKEN) return;
-  return apiGet({ action: 'data', token: TOKEN }).then((res) => {
-    if (!res.ok) {
-      if (/session/i.test(res.error || '')) { TOKEN = null; localStorage.removeItem('ptm_token'); showLock(); return; }
-      throw new Error(res.error);
-    }
+  return apiGet({ action: 'data' }).then((res) => {
+    if (!res.ok) throw new Error(res.error);
     DATA = res.data;
     renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces();
   }).catch((err) => { console.error('loadData failed', err); });
-}
-function showLock() {
-  pinBuf = '';
-  document.getElementById('lock').classList.remove('hidden');
-  renderPinDots();
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────
@@ -491,13 +418,20 @@ function renderFlights() {
   if (!flights.length) { list.innerHTML = '<div class="empty-hint">No flights yet</div>'; return; }
   list.innerHTML = flights.map(f => {
     const isDelayed = /delay/i.test(f.status);
-    return `<div class="card${isDelayed ? ' amb-border' : ''}">
-      <div class="fl-top"><div><div class="fl-num">${esc(f.flightNumber)}</div><div class="fl-sub">${esc(f.date)}</div></div>
-        <span class="pill ${isDelayed ? 'a' : 'g'}">${isDelayed ? 'Delayed' : 'On time'}</span></div>
+    const isLanded = /land/i.test(f.status);
+    const iconCls = isDelayed ? 'a' : isLanded ? 'b' : 'g';
+    const cardCls = isDelayed ? 'amb-border' : isLanded ? 'blue-border' : 'green-border';
+    const pillCls = isDelayed ? 'a' : isLanded ? 'b' : 'g';
+    const pillTxt = isDelayed ? 'Delayed' : isLanded ? 'Landed' : 'On time';
+    return `<div class="card ${cardCls}">
+      <div class="fl-top">
+        <div class="fl-left"><div class="fl-icon ${iconCls}"><i class="ti ti-plane"></i></div>
+          <div><div class="fl-num">${esc(f.flightNumber)}</div><div class="fl-sub">${esc(f.date)}</div></div></div>
+        <span class="pill ${pillCls}">${pillTxt}</span></div>
       ${f.scheduledTimes ? `<div class="fl-status">${esc(f.scheduledTimes)}</div>` : ''}
       ${f.status ? `<div class="fl-status">${esc(f.status)}</div>` : ''}
       ${f.arrival ? `<div class="fl-status">Arrival: ${esc(f.arrival)}</div>` : ''}
-      ${f.link ? `<a class="fl-link" href="${esc(f.link)}" target="_blank">View flight →</a>` : ''}
+      ${f.link ? `<a class="fl-link" href="${esc(f.link)}" target="_blank" rel="noopener">View on FlightAware →</a>` : ''}
     </div>`;
   }).join('');
 }
@@ -517,12 +451,20 @@ function renderPassengers() {
     const failed = /fail|error/i.test(p.boardingStatus);
     const pillClass = ok ? 'g' : failed ? 'r' : 'a';
     const pillTxt = p.boardingStatus || 'Pending';
-    return `<div class="pax-row"><div class="av">${esc(initials(p.name))}</div>
+    return `<div class="pax-row">
+      <div class="ck arr-ck${p.arrived ? ' y' : ''}" title="Arrived at airport" onclick="toggleArrived('${p.id}', this)"></div>
+      <div class="av">${esc(initials(p.name))}</div>
       <div style="flex:1"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
       ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
       <span class="pill ${pillClass}" style="margin-left:${p.checkinLink ? '6px' : 'auto'}">${esc(pillTxt)}</span>
     </div>`;
   }).join('');
+}
+function toggleArrived(id, el) {
+  const on = !el.classList.contains('y');
+  el.classList.toggle('y');
+  const row = DATA.passengers.find(p => p.id === id); if (row) row.arrived = on;
+  write({ action: 'toggleArrived', id: id, value: on });
 }
 
 // ─── CHECKLIST ───────────────────────────────────────────────────
@@ -546,85 +488,173 @@ function toggleChecklistItem(row, box) {
 }
 
 // ─── OPTIONAL TOURS ──────────────────────────────────────────────
+// V (and Tips) cycle through '' → USD → PEN. USD uses the tour's listed
+// price automatically; PEN needs a manual amount. T is just a plain tick
+// (TripADeal tours are already prepaid) and does not feed the totals.
+const CC_CYCLE = ['', 'USD', 'PEN'];
+
 function renderTours() {
   if (!DATA) return;
   const tours = DATA.tours;
   const thead = document.getElementById('tour-thead');
   const tbody = document.getElementById('tour-tbody');
+  const colgroup = document.getElementById('tour-colgroup');
   const defs = tours.tourDefs;
+
+  colgroup.innerHTML = `<col style="width:112px">` +
+    `<col style="width:56px">` +
+    defs.map(() => `<col style="width:34px"><col style="width:56px">`).join('') +
+    `<col style="width:64px"><col style="width:44px">`;
 
   thead.innerHTML = `<tr>
       <th class="lft">Passenger</th>
-      <th style="color:var(--green)">Tips<br><span style="color:var(--text4);font-weight:400;font-size:7px">$${tours.tipPrice}</span></th>
-      ${defs.map(d => `<th colspan="2" class="tsep thdr">${esc(d.name)}<br><span style="color:var(--amber);font-size:7px">$${d.price}</span></th>`).join('')}
+      <th style="color:var(--green)">Tips<br><input class="price-edit" type="number" value="${tours.tipPrice}" onchange="setTipPrice(this.value)"></th>
+      ${defs.map((d, ti) => `<th colspan="2" class="tsep thdr">${esc(d.name)}<br><input class="price-edit" type="number" value="${d.price}" onchange="setTourPrice(${ti}, this.value)"></th>`).join('')}
+      <th class="tsep" rowspan="2">Total</th><th rowspan="2">Paid</th>
     </tr>
     <tr>
       <th class="tsep lft"></th><th></th>
-      ${defs.map(() => `<th class="tsep" style="color:var(--green);font-size:8px">T</th><th style="color:var(--text3);font-size:8px">V</th>`).join('')}
+      ${defs.map(() => `<th class="tsep" style="color:var(--green);font-size:8px">T</th><th style="color:var(--amber);font-size:8px">V</th>`).join('')}
     </tr>`;
 
   const rows = tours.rows;
   tbody.innerHTML = rows.map(r => `
     <tr>
       <td class="nm">${esc(r.name)}</td>
-      <td><div class="ck${r.tip ? ' y' : ''}" onclick="toggleTip('${r.id}', this)"></div></td>
+      <td>${ccWidget_('tip', r.id, -1, r.tip)}</td>
       ${r.tours.map((t, ti) => `
-        <td class="tsep"><div class="ck${t.t ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, 't', this)"></div></td>
-        <td><div class="ck${t.v ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, 'v', this)"></div></td>
+        <td class="tsep"><div class="ck${t.t ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, this)"></div></td>
+        <td>${ccWidget_('tour', r.id, ti, t.v)}</td>
       `).join('')}
+      <td class="tsep">${rowTotalHtml_(r, tours)}</td>
+      <td><div class="ck${r.paid ? ' y' : ''}" onclick="togglePaid('${r.id}', this)"></div></td>
     </tr>`).join('') + `
     <tr class="cnt-row">
-      <td class="nm" style="color:var(--text4);font-size:9px">Count</td>
-      <td style="color:var(--green)">${rows.filter(r => r.tip).length || ''}</td>
+      <td class="nm" style="font-size:9px;color:var(--text4)">Count</td>
+      <td style="color:var(--amber)">${rows.filter(r => r.tip.currency).length || ''}</td>
       ${defs.map((d, ti) => `
         <td class="tsep" style="color:var(--green)">${rows.filter(r => r.tours[ti].t).length || ''}</td>
-        <td style="color:var(--text3)">${rows.filter(r => r.tours[ti].v).length || ''}</td>
+        <td style="color:var(--amber)">${rows.filter(r => r.tours[ti].v.currency).length || ''}</td>
       `).join('')}
+      <td class="tsep"></td><td></td>
     </tr>`;
 
   renderTourTotals();
 }
+
+function ccWidget_(kind, id, tourIndex, cc) {
+  const cur = cc.currency || '';
+  const cls = cur === 'USD' ? 'usd' : cur === 'PEN' ? 'pen' : '';
+  const label = cur || '—';
+  const cycleFn = `cycleCC('${kind}','${id}',${tourIndex})`;
+  let html = `<div class="cc"><div class="cc-lbl ${cls}" onclick="${cycleFn}">${esc(label)}</div>`;
+  if (cur === 'PEN') {
+    html += `<input class="cc-inp" type="number" placeholder="0" value="${cc.amount || ''}" onclick="event.stopPropagation()" onchange="setCCAmount('${kind}','${id}',${tourIndex}, this.value)">`;
+  }
+  html += `</div>`;
+  return html;
+}
+
+function findTourRow_(id) { return DATA.tours.rows.find(r => r.id === id); }
+function ccFor_(kind, row, tourIndex) { return kind === 'tip' ? row.tip : row.tours[tourIndex].v; }
+
+function cycleCC(kind, id, tourIndex) {
+  const row = findTourRow_(id); if (!row) return;
+  const cc = ccFor_(kind, row, tourIndex);
+  const next = CC_CYCLE[(CC_CYCLE.indexOf(cc.currency) + 1) % CC_CYCLE.length];
+  cc.currency = next; cc.amount = 0;
+  renderTours();
+  if (kind === 'tip') write({ action: 'setTip', id: id, currency: next, amount: 0 });
+  else write({ action: 'setTourValencia', id: id, tourIndex: tourIndex, currency: next, amount: 0 });
+}
+function setCCAmount(kind, id, tourIndex, val) {
+  const row = findTourRow_(id); if (!row) return;
+  const cc = ccFor_(kind, row, tourIndex);
+  cc.amount = parseFloat(val) || 0;
+  renderTourTotals();
+  updateRowTotalCell_(id);
+  if (kind === 'tip') write({ action: 'setTip', id: id, currency: cc.currency, amount: cc.amount });
+  else write({ action: 'setTourValencia', id: id, tourIndex: tourIndex, currency: cc.currency, amount: cc.amount });
+}
+function updateRowTotalCell_(id) {
+  // amount inputs re-render on 'change', not every keystroke, so a full
+  // renderTours() is fine here — cheap for ~16 passenger rows.
+  renderTours();
+}
+
+function rowTotalHtml_(r, tours) {
+  let usd = 0, pen = 0;
+  if (r.tip.currency === 'USD') usd += tours.tipPrice;
+  else if (r.tip.currency === 'PEN') pen += r.tip.amount;
+  r.tours.forEach((t, ti) => {
+    if (t.v.currency === 'USD') usd += tours.tourDefs[ti].price;
+    else if (t.v.currency === 'PEN') pen += t.v.amount;
+  });
+  const parts = [];
+  if (usd) parts.push(`<b>$${usd.toFixed(0)}</b>`);
+  if (pen) parts.push(`<b class="pen">S/${pen.toFixed(0)}</b>`);
+  return `<div class="row-total">${parts.join(' + ') || '—'}</div>`;
+}
+
+function toggleTourTick(id, tourIndex, el) {
+  const on = !el.classList.contains('y');
+  el.classList.toggle('y');
+  const row = findTourRow_(id); if (row) row.tours[tourIndex].t = on;
+  write({ action: 'toggleTourTick', id: id, tourIndex: tourIndex, value: on });
+}
+function togglePaid(id, el) {
+  const on = !el.classList.contains('y');
+  el.classList.toggle('y');
+  const row = findTourRow_(id); if (row) row.paid = on;
+  write({ action: 'setPaid', id: id, value: on });
+}
+function setTourPrice(tourIndex, value) {
+  const price = parseFloat(value) || 0;
+  DATA.tours.tourDefs[tourIndex].price = price;
+  renderTours();
+  write({ action: 'setTourPrice', tourIndex: tourIndex, price: price });
+}
+function setTipPrice(value) {
+  const price = parseFloat(value) || 0;
+  DATA.tours.tipPrice = price;
+  renderTours();
+  write({ action: 'setTipPrice', price: price });
+}
+
 function renderTourTotals() {
   const area = document.getElementById('tour-totals');
   const tours = DATA.tours;
   const defs = tours.tourDefs;
   const rows = tours.rows;
   const mkBlock = (title, rowsHtml) => `<div class="tot-block"><div class="tot-title">${esc(title)}</div>${rowsHtml}</div>`;
-  const mkRow = (lbl, val) => `<div class="tot-row"><div class="tot-lbl">${esc(lbl)}</div><div class="tot-usd">${esc(val)}</div></div>`;
+  const mkRow = (lbl, val, cls) => `<div class="tot-row"><div class="tot-lbl">${esc(lbl)}</div><div class="${cls}">${esc(val)}</div></div>`;
 
   let html = '';
-  const tipCount = rows.filter(r => r.tip).length;
-  html += mkBlock('Tips', tipCount ? mkRow(tipCount + ' pax × $' + tours.tipPrice, '$' + (tipCount * tours.tipPrice).toFixed(2)) : mkRow('No tips recorded yet', ''));
+  const tipUsdN = rows.filter(r => r.tip.currency === 'USD').length;
+  const tipPen = rows.filter(r => r.tip.currency === 'PEN').reduce((s, r) => s + r.tip.amount, 0);
+  let tipRows = '';
+  if (tipUsdN) tipRows += mkRow(tipUsdN + ' pax × $' + tours.tipPrice, '$' + (tipUsdN * tours.tipPrice).toFixed(2), 'tot-usd');
+  if (tipPen) tipRows += mkRow('Collected in PEN', 'S/' + tipPen.toFixed(2), 'tot-pen');
+  html += mkBlock('Tips', tipRows || mkRow('No tips recorded yet', '', 'tot-lbl'));
 
-  let grandUsd = tipCount * tours.tipPrice;
+  let grandUsd = tipUsdN * tours.tipPrice;
+  let grandPen = tipPen;
   defs.forEach((d, ti) => {
-    const n = rows.filter(r => r.tours[ti].t).length;
-    const vN = rows.filter(r => r.tours[ti].v).length;
-    if (!n && !vN) return;
-    grandUsd += n * d.price;
+    const usdN = rows.filter(r => r.tours[ti].v.currency === 'USD').length;
+    const pen = rows.filter(r => r.tours[ti].v.currency === 'PEN').reduce((s, r) => s + r.tours[ti].v.amount, 0);
+    if (!usdN && !pen) return;
+    grandUsd += usdN * d.price;
+    grandPen += pen;
     let rowsHtml = '';
-    if (n) rowsHtml += mkRow(n + ' pax × $' + d.price + ' (TripADeal)', '$' + (n * d.price).toFixed(2));
-    if (vN) rowsHtml += `<div class="tot-row"><div class="tot-lbl">${vN} pax booked with Valencia (cash)</div><div class="tot-lbl">—</div></div>`;
+    if (usdN) rowsHtml += mkRow(usdN + ' pax × $' + d.price, '$' + (usdN * d.price).toFixed(2), 'tot-usd');
+    if (pen) rowsHtml += mkRow('Collected in PEN', 'S/' + pen.toFixed(2), 'tot-pen');
     html += mkBlock(d.name, rowsHtml);
   });
 
-  html += `<div class="grand-block"><div class="grand-title">Grand total (TripADeal + tips)</div>
-    <div class="grand-row"><div class="grand-lbl">USD</div><div class="grand-val">$${grandUsd.toFixed(2)}</div></div></div>`;
+  html += `<div class="grand-block"><div class="grand-title">Grand totals</div>
+    <div class="grand-row"><div class="grand-lbl usd">USD</div><div class="grand-val">$${grandUsd.toFixed(2)}</div></div>
+    <div class="grand-row"><div class="grand-lbl pen">PEN</div><div class="grand-val">S/${grandPen.toFixed(2)}</div></div></div>`;
   area.innerHTML = html;
-}
-function toggleTip(id, el) {
-  const on = !el.classList.contains('y');
-  el.classList.toggle('y');
-  const row = DATA.tours.rows.find(r => r.id === id); if (row) row.tip = on;
-  renderTourTotals();
-  write({ action: 'toggleTip', id: id, value: on });
-}
-function toggleTourTick(id, tourIndex, which, el) {
-  const on = !el.classList.contains('y');
-  el.classList.toggle('y');
-  const row = DATA.tours.rows.find(r => r.id === id); if (row) row.tours[tourIndex][which] = on;
-  renderTourTotals();
-  write({ action: 'toggleTourTick', id: id, tourIndex: tourIndex, which: which, value: on });
 }
 
 // ─── TICKETS ─────────────────────────────────────────────────────
@@ -679,25 +709,17 @@ function toggleTicket(id, col, defIndex, el) {
 function saveNotes(v) { localStorage.setItem('ptm_ticket_notes', v); }
 
 // ─── INFO & DIET / BIRTHDAYS ─────────────────────────────────────
-function dietTag(diet) {
-  const d = (diet || '').toLowerCase();
-  if (!d || /no restriction/.test(d)) return { cls: 'none', txt: diet || 'No restrictions' };
-  if (/veg/.test(d)) return { cls: 'veg', txt: diet };
-  if (/gluten/.test(d)) return { cls: 'gf', txt: diet };
-  if (/seafood|shellfish|fish/.test(d)) return { cls: 'sf', txt: diet };
-  return { cls: 'none', txt: diet };
-}
 function renderInfo() {
   if (!DATA) return;
   const info = DATA.info || [];
   const list = document.getElementById('info-list');
   if (!info.length) { list.innerHTML = '<div class="empty-hint">No passenger info yet</div>'; return; }
   list.innerHTML = info.map(p => {
-    const tag = dietTag(p.diet);
     const hasBday = !!p.birthday;
     return `<div class="info-row"><div class="info-top"><div class="av">${esc(initials(p.name))}</div>
-      <div style="flex:1"><div class="pax-name">${esc(p.name)}</div><span class="diet-tag ${tag.cls}">${esc(tag.txt)}</span></div>
+      <div style="flex:1"><div class="pax-name">${esc(p.name)}</div></div>
       <button class="bday-btn ${hasBday ? 'on' : 'off'}" onclick="togBday('${p.id}', this)">${hasBday ? '🎂 During tour!' : '🎂 Birthday?'}</button></div>
+      <input class="diet-input" type="text" placeholder="Dietary requirements — tap to edit" value="${esc(p.diet)}" onchange="setDiet('${p.id}', this.value)">
       <div class="bday-area${hasBday ? ' open' : ''}"><span class="bday-lbl">Date:</span>
         <input type="date" class="bday-input" value="${esc(p.birthday)}" onchange="setBirthday('${p.id}', this.value)"></div>
     </div>`;
@@ -707,7 +729,6 @@ function togBday(id, btn) {
   const isOn = btn.classList.contains('on');
   const area = btn.closest('.info-row').querySelector('.bday-area');
   if (isOn) {
-    // turning off clears the stored date
     btn.classList.remove('on'); btn.classList.add('off'); btn.textContent = '🎂 Birthday?';
     area.classList.remove('open');
     area.querySelector('.bday-input').value = '';
@@ -720,6 +741,10 @@ function togBday(id, btn) {
 function setBirthday(id, value) {
   const row = DATA.info.find(p => p.id === id); if (row) row.birthday = value;
   write({ action: 'setBirthday', id: id, value: value });
+}
+function setDiet(id, value) {
+  const row = DATA.info.find(p => p.id === id); if (row) row.diet = value;
+  write({ action: 'setDiet', id: id, value: value });
 }
 
 // ─── PLACES ──────────────────────────────────────────────────────
@@ -760,9 +785,9 @@ function calcCur() {
 }
 
 // ─── INIT ────────────────────────────────────────────────────────
-buildPinPad();
 calcCur();
-if (TOKEN) unlock(); else showLock();
+loadData();
+setInterval(() => { if (document.visibilityState === 'visible') loadData(); }, 45000);
 </script>
 </body>
 </html>

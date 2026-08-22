@@ -5,23 +5,31 @@
  * "Who has access: Anyone with the link") this gives the static PWA a
  * free JSON API with no service-account key needed at runtime.
  *
+ * No PIN / auth — anyone with the deployed URL can read and write. That's a
+ * deliberate simplification (removed at the owner's request); the URL
+ * itself is the only thing gating access.
+ *
  * SETUP (one-time):
  *   1. Open the Sheet → Extensions → Apps Script.
  *   2. Delete the placeholder code, paste this whole file in.
- *   3. Run `setPin` once from the editor toolbar (select it in the function
- *      dropdown → Run) to set the PIN. Change '1234' below first if you want
- *      something else — you can also change it later without redeploying,
- *      see setPin().
- *   4. Deploy → New deployment → type "Web app" →
+ *   3. Deploy → New deployment → type "Web app" →
  *        Execute as: Me
  *        Who has access: Anyone
  *      Click Deploy, authorize the permissions prompt (that's you granting
  *      your own script access to your own Sheet — normal and expected).
- *   5. Copy the "Web app URL" (ends in /exec) into CONFIG.APPS_SCRIPT_URL
+ *   4. Copy the "Web app URL" (ends in /exec) into CONFIG.APPS_SCRIPT_URL
  *      in index.html.
  *
  * Re-deploying: if you edit this file later, use Deploy → Manage deployments
  * → edit (pencil) → New version, so the existing /exec URL keeps working.
+ *
+ * IMPORTANT sheet change needed once: the "Valencia" (V) column and "Tips"
+ * column in the TOURS tab used to be plain checkboxes (TRUE/FALSE). They now
+ * store a currency code + amount instead (e.g. "USD" or "PEN:120.00"), so
+ * remove the checkbox validation on those columns in the Sheet (select the
+ * columns → Data → Data validation → Remove rule) so Sheets doesn't fight
+ * the app over what's a valid value there. The app clears it automatically
+ * on write too, as a safety net.
  */
 
 // ─── CONFIG ──────────────────────────────────────────────────────────────
@@ -35,19 +43,11 @@ const SHEET_NAMES = {
   recs: 'RECOMMENDATIONS',
 };
 
-function setPin() {
-  PropertiesService.getScriptProperties().setProperty('PIN', '1234');
-}
-
 // ─── ENTRY POINTS ────────────────────────────────────────────────────────
 function doGet(e) {
   try {
     const action = e.parameter.action;
-    if (action === 'login') return respond_(login_(e.parameter.pin));
-    if (action === 'data') {
-      requireToken_(e.parameter.token);
-      return respond_({ ok: true, data: getAllData_() });
-    }
+    if (action === 'data') return respond_({ ok: true, data: getAllData_() });
     return respond_({ ok: false, error: 'Unknown action' });
   } catch (err) {
     return respond_({ ok: false, error: String(err) });
@@ -62,7 +62,6 @@ function doPost(e) {
     // real request. Parsing the JSON ourselves from postData.contents
     // sidesteps that entirely.
     const body = JSON.parse(e.postData.contents);
-    requireToken_(body.token);
     const result = handleWrite_(body);
     return respond_({ ok: true, result: result });
   } catch (err) {
@@ -73,27 +72,6 @@ function doPost(e) {
 function respond_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
-}
-
-// ─── AUTH ────────────────────────────────────────────────────────────────
-function login_(pin) {
-  const props = PropertiesService.getScriptProperties();
-  const realPin = props.getProperty('PIN') || '1234';
-  if (String(pin) !== String(realPin)) return { ok: false, error: 'Wrong PIN' };
-  const token = Utilities.getUuid();
-  const sessions = JSON.parse(props.getProperty('SESSIONS') || '{}');
-  sessions[token] = Date.now();
-  // Keep the sessions list from growing forever — drop anything older than 180 days.
-  const cutoff = Date.now() - 180 * 24 * 60 * 60 * 1000;
-  Object.keys(sessions).forEach((t) => { if (sessions[t] < cutoff) delete sessions[t]; });
-  props.setProperty('SESSIONS', JSON.stringify(sessions));
-  return { ok: true, token: token };
-}
-
-function requireToken_(token) {
-  if (!token) throw new Error('Missing token');
-  const sessions = JSON.parse(PropertiesService.getScriptProperties().getProperty('SESSIONS') || '{}');
-  if (!sessions[token]) throw new Error('Invalid or expired session — please enter the PIN again');
 }
 
 // ─── HELPERS ─────────────────────────────────────────────────────────────
@@ -137,9 +115,25 @@ function isoDate_(v) {
     return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
   }
   if (!v) return '';
-  // Already-typed text like "2026-08-10" or "10/08/2026" — leave as-is if it
-  // already looks ISO, otherwise just pass through (best effort).
   return String(v);
+}
+
+// V (Valencia) and Tips cells store a currency code + optional amount as
+// plain text: "" (not booked), "USD" (auto-priced, no amount needed),
+// "PEN:120.00" (manual amount). Old boolean TRUE values from before this
+// change are treated as "booked, currency not yet chosen" → USD default.
+function parseCC_(v) {
+  const s = String(v == null ? '' : v).trim();
+  if (!s || s.toUpperCase() === 'FALSE') return { currency: '', amount: 0 };
+  if (s.toUpperCase() === 'TRUE') return { currency: 'USD', amount: 0 };
+  const m = s.match(/^([A-Za-z]{3})(?::([0-9.]+))?$/);
+  if (m) return { currency: m[1].toUpperCase(), amount: parseFloat(m[2]) || 0 };
+  return { currency: '', amount: 0 };
+}
+function encodeCC_(currency, amount) {
+  if (!currency) return '';
+  if (currency === 'USD') return 'USD';
+  return currency + ':' + (parseFloat(amount) || 0).toFixed(2);
 }
 
 // ─── READ: full data blob ────────────────────────────────────────────────
@@ -179,8 +173,14 @@ function getFlights_() {
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
     if (!row[1]) continue; // no flight number → skip
+    const flightNumber = String(row[1]).trim();
     out.push({
-      date: cellStr_(row[0]), flightNumber: row[1], link: row[2] || '',
+      date: cellStr_(row[0]), flightNumber: flightNumber,
+      // Column C is a HYPERLINK() formula whose display text is just "View" —
+      // getValues() only returns that display text, losing the URL. The
+      // underlying link always follows this exact pattern, so build it
+      // directly rather than trying to pull rich-text/formula data out.
+      link: flightNumber ? 'https://es.flightaware.com/live/flight/' + encodeURIComponent(flightNumber) : '',
       status: row[3] || '', departure: row[4] || '', arrival: row[5] || '',
     });
   }
@@ -234,13 +234,17 @@ function getTours_() {
     if (row[1] === '' && row[2] === '') continue;
     out.push({
       id: String(row[0]), name: fullName_(row[1], row[2]),
-      tip: bool_(row[3]),
-      tours: defs.map((d) => ({ name: d.name, t: bool_(row[d.colT]), v: bool_(row[d.colV]) })),
+      tip: parseCC_(row[3]),
+      tours: defs.map((d) => ({ name: d.name, t: bool_(row[d.colT]), v: parseCC_(row[d.colV]) })),
       total: totalCol >= 0 ? row[totalCol] : '',
       paid: paidCol >= 0 ? bool_(row[paidCol]) : false,
     });
   }
-  return { tourDefs: defs.map((d) => ({ name: d.name, price: d.price })), rows: out, tipPrice: parseMoney_(priceRow[3]) };
+  return {
+    tourDefs: defs.map((d) => ({ name: d.name, price: d.price })),
+    rows: out,
+    tipPrice: parseMoney_(priceRow[3]),
+  };
 }
 
 function getTickets_() {
@@ -286,7 +290,7 @@ function getRecs_() {
   const parse = (cell) => {
     const m = String(cell || '').match(/in\s+([^:]+):\s*(https?:\/\/\S+)/i);
     if (!m) return null;
-    return { city: m[1].trim(), url: m[2].replace(/[￼ \s]+$/, '') };
+    return { city: m[1].trim(), url: m[2].replace(/[￼ \s]+$/, '') };
   };
   for (let r = 1; r < rows.length; r++) {
     const rest = parse(rows[r][0]);
@@ -301,8 +305,12 @@ function getRecs_() {
 function handleWrite_(body) {
   switch (body.action) {
     case 'toggleChecklist': return toggleChecklistItem_(body.row, body.done);
-    case 'toggleTourTick': return toggleTourTick_(body.id, body.tourIndex, body.which, body.value);
-    case 'toggleTip': return toggleTip_(body.id, body.value);
+    case 'toggleArrived': return toggleArrived_(body.id, body.value);
+    case 'toggleTourTick': return toggleTourTick_(body.id, body.tourIndex, body.value);
+    case 'setTourValencia': return setTourValencia_(body.id, body.tourIndex, body.currency, body.amount);
+    case 'setTip': return setTip_(body.id, body.currency, body.amount);
+    case 'setTourPrice': return setTourPrice_(body.tourIndex, body.price);
+    case 'setTipPrice': return setTipPrice_(body.price);
     case 'setPaid': return setPaid_(body.id, body.value);
     case 'toggleTicket': return toggleTicket_(body.id, body.col, body.value);
     case 'setBirthday': return setBirthday_(body.id, body.value);
@@ -324,23 +332,59 @@ function toggleChecklistItem_(row, done) {
   return { row: row, done: done };
 }
 
-function toggleTourTick_(id, tourIndex, which, value) {
+function toggleArrived_(id, value) {
+  const sh = sheet_('checkin');
+  const row = findRowById_(sh, id, 1);
+  sh.getRange(row, 4).setValue(value ? 'TRUE' : 'FALSE'); // col D = Arrived
+  return { id: id, value: value };
+}
+
+function toggleTourTick_(id, tourIndex, value) {
   const sh = sheet_('tours');
   const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
   const defs = tourDefs_(headers);
   const def = defs[tourIndex];
   if (!def) throw new Error('Unknown tour index: ' + tourIndex);
-  const col = which === 't' ? def.colT : def.colV;
   const row = findRowById_(sh, id, 2);
-  sh.getRange(row, col + 1).setValue(value ? 'TRUE' : 'FALSE');
-  return { id: id, tourIndex: tourIndex, which: which, value: value };
+  sh.getRange(row, def.colT + 1).setValue(value ? 'TRUE' : 'FALSE');
+  return { id: id, tourIndex: tourIndex, value: value };
 }
 
-function toggleTip_(id, value) {
+function setTourValencia_(id, tourIndex, currency, amount) {
+  const sh = sheet_('tours');
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const defs = tourDefs_(headers);
+  const def = defs[tourIndex];
+  if (!def) throw new Error('Unknown tour index: ' + tourIndex);
+  const row = findRowById_(sh, id, 2);
+  const cell = sh.getRange(row, def.colV + 1);
+  cell.clearDataValidations(); // this column used to be a checkbox; stop Sheets fighting the new text value
+  cell.setValue(encodeCC_(currency, amount));
+  return { id: id, tourIndex: tourIndex, currency: currency, amount: amount };
+}
+
+function setTip_(id, currency, amount) {
   const sh = sheet_('tours');
   const row = findRowById_(sh, id, 2);
-  sh.getRange(row, 4).setValue(value ? 'TRUE' : 'FALSE'); // col D = Tips
-  return { id: id, value: value };
+  const cell = sh.getRange(row, 4); // col D = Tips
+  cell.clearDataValidations();
+  cell.setValue(encodeCC_(currency, amount));
+  return { id: id, currency: currency, amount: amount };
+}
+
+function setTourPrice_(tourIndex, price) {
+  const sh = sheet_('tours');
+  const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
+  const defs = tourDefs_(headers);
+  const def = defs[tourIndex];
+  if (!def) throw new Error('Unknown tour index: ' + tourIndex);
+  sh.getRange(2, def.colV + 1).setValue(parseFloat(price) || 0);
+  return { tourIndex: tourIndex, price: price };
+}
+
+function setTipPrice_(price) {
+  sheet_('tours').getRange(2, 4).setValue(parseFloat(price) || 0);
+  return { price: price };
 }
 
 function setPaid_(id, value) {
