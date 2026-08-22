@@ -1,0 +1,768 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Peru Tour">
+<meta name="theme-color" content="#0f0f0f">
+<title>Peru Tour Manager</title>
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/tabler-icons/3.19.0/iconfont/tabler-icons.min.css">
+<style>
+/* ─── RESET & BASE ─────────────────────────────────────────────── */
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#0f0f0f;--bg2:#1a1a1a;--bg3:#222;--bg4:#111;
+  --border:#2a2a2a;--border2:#333;
+  --text:#fff;--text2:#ccc;--text3:#888;--text4:#555;
+  --red:#c8102e;--red-bg:#1e0d0d;--red-border:#c8102e;
+  --green:#3dbd75;--green-bg:#0d2e1a;--green-border:#1e5e1e;
+  --amber:#f59e0b;--amber-bg:#2e1a0d;--amber-border:#4d3800;
+  --blue:#60a5fa;--blue-bg:#0d1a2e;--blue-border:#1e1e50;
+  --purple:#a78bfa;--purple-bg:#1e1a2e;
+  --nav-h:64px;
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;
+}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
+
+/* ─── APP SHELL ────────────────────────────────────────────────── */
+#app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;position:relative;overflow:hidden}
+#topbar{padding:12px 20px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg)}
+#topbar h1{font-size:20px;font-weight:500;color:var(--text)}
+.badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
+.badge.red{background:var(--red);color:#fff}
+.badge.amb{background:var(--amber-bg);color:var(--amber)}
+.badge.none{display:none}
+#topbar-right{display:flex;align-items:center;gap:8px}
+#sync-dot{width:7px;height:7px;border-radius:50%;background:var(--text4);flex-shrink:0;transition:background .2s}
+#sync-dot.saving{background:var(--amber);animation:pulse 1s infinite}
+#sync-dot.saved{background:var(--green)}
+#sync-dot.error{background:var(--red)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+#screens{flex:1;overflow:hidden;position:relative}
+.screen{position:absolute;inset:0;overflow-y:auto;padding:0 16px 16px;display:none;scrollbar-width:none}
+.screen::-webkit-scrollbar{display:none}
+.screen.active{display:block}
+#navbar{height:var(--nav-h);background:#141414;border-top:.5px solid var(--border);display:flex;justify-content:space-around;align-items:center;flex-shrink:0}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;padding:4px 10px;border-radius:10px;min-width:44px}
+.nav-item i{font-size:22px;color:var(--text4)}
+.nav-item span{font-size:9px;font-weight:500;color:var(--text4)}
+.nav-item.active i,.nav-item.active span{color:var(--red)}
+
+/* ─── SHARED COMPONENTS ────────────────────────────────────────── */
+.sec-label{color:var(--text4);font-size:10px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin:14px 0 7px}
+.card{background:var(--bg2);border-radius:14px;padding:12px 14px;margin-bottom:9px;border:.5px solid var(--border)}
+.card.red-border{border-color:var(--red)}
+.card.amb-border{border-color:#d97706}
+.pill{font-size:10px;padding:3px 9px;border-radius:20px;font-weight:500;white-space:nowrap;min-width:88px;text-align:center}
+.pill.g{background:var(--green-bg);color:var(--green)}
+.pill.a{background:var(--amber-bg);color:var(--amber)}
+.pill.r{background:var(--red-bg);color:#f87171}
+.pill.b{background:var(--blue-bg);color:var(--blue)}
+.pill.p{background:var(--purple-bg);color:var(--purple)}
+.hint{color:var(--text4);font-size:10px;margin-bottom:10px;line-height:1.5}
+.divider{height:.5px;background:var(--border);margin:8px 0}
+.alert-bar{background:var(--red-bg);border:.5px solid var(--red);border-radius:11px;padding:9px 13px;margin-bottom:12px;display:flex;align-items:center;gap:9px}
+.alert-dot{width:7px;height:7px;border-radius:50%;background:var(--red);flex-shrink:0}
+.alert-text{color:#f87171;font-size:11px;line-height:1.4}
+.empty-hint{color:var(--text4);font-size:12px;text-align:center;padding:30px 10px}
+
+/* ─── FLIGHTS SCREEN ────────────────────────────────────────────── */
+.fl-top{display:flex;justify-content:space-between;align-items:flex-start}
+.fl-num{color:var(--text);font-size:15px;font-weight:500}
+.fl-sub{color:var(--text3);font-size:11px;margin-top:2px}
+.fl-status{color:var(--text3);font-size:11px;margin-top:8px;line-height:1.4;padding-top:8px;border-top:.5px solid var(--border)}
+.fl-link{color:var(--blue);font-size:11px;margin-top:6px;display:inline-block}
+
+/* ─── PASSENGERS SCREEN ────────────────────────────────────────── */
+.sum-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:14px}
+.sum-card{background:var(--bg2);border-radius:11px;padding:11px 13px;border:.5px solid var(--border)}
+.sum-n{color:var(--text);font-size:22px;font-weight:500}
+.sum-l{color:var(--text4);font-size:10px;margin-top:2px}
+.pax-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px;border:.5px solid var(--border)}
+.av{width:32px;height:32px;border-radius:50%;background:#1e2a3a;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:11px;font-weight:500;flex-shrink:0}
+.pax-name{color:var(--text);font-size:13px;font-weight:500}
+.pax-detail{color:var(--text4);font-size:10px;margin-top:1px}
+.latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--red-bg);border:.5px solid var(--red);border-radius:8px;padding:3px 8px;color:#f87171;font-size:10px;text-decoration:none;margin-left:auto;flex-shrink:0;white-space:nowrap}
+.latam-link i{font-size:12px}
+
+/* ─── CHECKLIST SCREEN ──────────────────────────────────────────── */
+.chk-row{display:flex;align-items:flex-start;gap:11px;padding:10px 0;border-bottom:.5px solid #1e1e1e}
+.chk-row:last-child{border-bottom:none}
+.chk-box{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--border2);flex-shrink:0;margin-top:1px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.chk-box.done{background:var(--green-bg);border-color:var(--green)}
+.chk-box.done::after{content:'✓';color:var(--green);font-size:12px}
+.chk-lbl{color:var(--text2);font-size:13px;line-height:1.4}
+.chk-lbl.done{color:var(--text4);text-decoration:line-through}
+.day-hdr{color:var(--text);font-size:12px;font-weight:500;background:var(--bg3);border-radius:7px;padding:6px 10px;margin:10px 0 4px}
+
+/* ─── TOURS SCREEN ──────────────────────────────────────────────── */
+.tabs{display:flex;gap:5px;margin-bottom:11px;overflow-x:auto;scrollbar-width:none}
+.tabs::-webkit-scrollbar{display:none}
+.tab{background:var(--bg2);border:.5px solid var(--border);border-radius:20px;padding:4px 11px;color:var(--text4);font-size:11px;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.tab.active{background:var(--red);border-color:var(--red);color:#fff}
+
+.tour-wrap{overflow-x:auto;scrollbar-width:none;margin:0 -16px;padding:0 16px}
+.tour-wrap::-webkit-scrollbar{display:none}
+.ttbl{border-collapse:collapse;table-layout:fixed;width:100%}
+.ttbl th{color:var(--text4);font-weight:500;padding:5px 2px;border-bottom:.5px solid var(--border);text-align:center;font-size:9px;white-space:nowrap;overflow:hidden}
+.ttbl th.lft{text-align:left;padding-left:4px}
+.ttbl td{height:30px;padding:0 2px;border-bottom:.5px solid #161616;text-align:center;vertical-align:middle;overflow:hidden}
+.ttbl td.nm{text-align:left;color:var(--text);font-size:11px;white-space:nowrap;padding-left:4px}
+.tsep{border-left:1.5px solid var(--border)}
+.cnt-row td{border-top:.5px solid var(--border);border-bottom:none;height:28px;font-size:10px;font-weight:500}
+.thdr{background:#141414;padding:3px 2px}
+.ck{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;vertical-align:middle}
+.ck.y{background:var(--green-bg);border-color:var(--green)}.ck.y::after{content:'✓';color:var(--green);font-size:9px}
+
+/* totals */
+.tot-block{background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:.5px solid var(--border)}
+.tot-title{color:var(--text3);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
+.tot-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid #1e1e1e}
+.tot-row:last-child{border-bottom:none}
+.tot-lbl{color:var(--text4);font-size:11px}
+.tot-usd{color:var(--green);font-size:12px;font-weight:500}
+.grand-block{background:var(--bg2);border-radius:12px;padding:12px 14px;border:.5px solid var(--border2);margin-bottom:8px}
+.grand-title{color:var(--text2);font-size:11px;font-weight:500;margin-bottom:8px}
+.grand-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid #1e1e1e}
+.grand-row:last-child{border-bottom:none}
+.grand-lbl{font-size:12px;font-weight:600;color:var(--green)}
+.grand-val{font-size:13px;font-weight:500;color:var(--text)}
+
+/* tickets */
+.tkt-sec{background:var(--bg2);border-radius:12px;margin-bottom:8px;border:.5px solid var(--border);overflow:hidden}
+.tkt-hdr{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;cursor:pointer;user-select:none}
+.tkt-title{color:var(--text);font-size:13px;font-weight:500}
+.tkt-meta{display:flex;align-items:center;gap:8px}
+.tkt-dt{color:var(--text3);font-size:11px}
+.tkt-badge{background:var(--bg3);border-radius:10px;padding:2px 8px;color:var(--text3);font-size:10px}
+.tkt-badge.has{background:var(--green-bg);color:var(--green)}
+.tkt-chev{color:var(--text4);font-size:14px;transition:transform .2s}
+.tkt-chev.open{transform:rotate(180deg)}
+.tkt-body{display:none;border-top:.5px solid var(--border)}
+.tkt-body.open{display:block}
+.tkt-pax{display:flex;align-items:center;gap:10px;padding:9px 13px;border-bottom:.5px solid #161616}
+.tkt-pax:last-child{border-bottom:none}
+.tkt-av{width:28px;height:28px;border-radius:50%;background:#1e2a3a;display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:10px;font-weight:500;flex-shrink:0}
+.tkt-av.warn{background:#2e1a1a;color:#f87171}
+.tkt-pname{color:var(--text2);font-size:12px;flex:1}
+.tkt-pname.warn{color:#f87171}
+.tkt-pp{font-family:ui-monospace,monospace;color:var(--blue);font-size:10px;letter-spacing:.04em;margin-right:4px}
+.tkt-pp.warn{color:#f87171}
+.notes-area{margin:0 0 11px;background:var(--bg4);border-radius:8px;padding:8px 10px;border:.5px solid var(--red)}
+.notes-lbl{color:var(--text4);font-size:10px;margin-bottom:4px}
+.notes-area textarea{width:100%;background:transparent;border:none;color:var(--text2);font-size:12px;resize:none;height:48px;outline:none;font-family:inherit}
+
+/* info & diet */
+.info-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;border:.5px solid var(--border)}
+.info-top{display:flex;align-items:center;gap:10px}
+.diet-tag{font-size:10px;padding:2px 7px;border-radius:8px;display:inline-block;margin-top:3px}
+.diet-tag.none{background:var(--bg2);color:var(--text4);border:.5px solid var(--border)}
+.diet-tag.veg{background:var(--purple-bg);color:var(--purple)}
+.diet-tag.gf{background:var(--amber-bg);color:var(--amber)}
+.diet-tag.sf{background:var(--blue-bg);color:var(--blue)}
+.bday-btn{font-size:10px;padding:3px 8px;border-radius:8px;cursor:pointer;flex-shrink:0;border:none;font-family:inherit}
+.bday-btn.off{background:var(--bg3);color:var(--text4);border:.5px solid var(--border2)}
+.bday-btn.on{background:var(--green-bg);color:var(--green);border:.5px solid var(--green-border)}
+.bday-area{margin-top:8px;padding-top:8px;border-top:.5px solid var(--border);display:none;align-items:center;gap:8px}
+.bday-area.open{display:flex}
+.bday-lbl{color:var(--text4);font-size:11px;flex-shrink:0}
+.bday-input{background:var(--bg4);border:.5px solid var(--border2);border-radius:8px;color:var(--text2);font-size:11px;padding:4px 8px;flex:1}
+
+/* currency calculator */
+.cur-block{background:var(--bg2);border-radius:11px;padding:11px 13px;margin-bottom:8px;border:.5px solid var(--border)}
+.cur-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.cur-row:last-child{margin-bottom:0}
+.cur-lbl{color:var(--text3);font-size:11px;width:80px;flex-shrink:0}
+.cur-in{background:var(--bg4);border:.5px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;padding:5px 9px;flex:1;min-width:0;font-family:inherit;outline:none}
+.cur-res{color:var(--green);font-size:13px;font-weight:500;min-width:72px;text-align:right}
+.cur-rate{color:var(--text4);font-size:10px;text-align:center;margin-top:4px}
+
+/* places */
+.rec-card{background:var(--bg2);border-radius:12px;padding:11px 13px;margin-bottom:8px;border:.5px solid var(--border)}
+.rec-city{color:var(--text3);font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;margin-bottom:6px}
+.rec-lnk{display:flex;align-items:center;justify-content:space-between;padding:7px 0;border-bottom:.5px solid #1e1e1e}
+.rec-lnk:last-child{border-bottom:none}
+.rec-left{display:flex;align-items:center;gap:8px}
+.rec-icon{color:var(--red);font-size:15px}
+.rec-txt{color:var(--blue);font-size:12px}
+.wa-btn{background:var(--green-bg);border:.5px solid var(--green-border);border-radius:8px;padding:4px 9px;color:var(--green);font-size:10px;display:flex;align-items:center;gap:4px;cursor:pointer}
+
+/* ─── LOCK SCREEN ────────────────────────────────────────────────── */
+#lock{position:fixed;inset:0;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:100;max-width:430px;margin:0 auto}
+#lock.hidden{display:none}
+#lock .logo{width:64px;height:64px;border-radius:16px;background:var(--red);display:flex;align-items:center;justify-content:center;margin-bottom:18px}
+#lock .logo i{font-size:32px;color:#fff}
+#lock h2{font-size:17px;font-weight:500;margin-bottom:6px}
+#lock p{color:var(--text4);font-size:12px;margin-bottom:24px}
+#pin-dots{display:flex;gap:14px;margin-bottom:26px}
+.pin-dot{width:14px;height:14px;border-radius:50%;border:1.5px solid var(--border2);background:transparent}
+.pin-dot.filled{background:var(--red);border-color:var(--red)}
+#pin-pad{display:grid;grid-template-columns:repeat(3,64px);gap:14px}
+.pin-key{width:64px;height:64px;border-radius:50%;background:var(--bg2);border:.5px solid var(--border);color:var(--text);font-size:20px;display:flex;align-items:center;justify-content:center;cursor:pointer}
+.pin-key:active{background:var(--bg3)}
+.pin-key.ghost{background:transparent;border:none}
+#lock-err{color:#f87171;font-size:12px;margin-top:16px;min-height:14px}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════
+     LOCK SCREEN
+══════════════════════════════════════════ -->
+<div id="lock">
+  <div class="logo"><i class="ti ti-plane"></i></div>
+  <h2>Peru Tour Manager</h2>
+  <p>Enter PIN to continue</p>
+  <div id="pin-dots"></div>
+  <div id="pin-pad"></div>
+  <div id="lock-err"></div>
+</div>
+
+<div id="app">
+
+  <!-- TOP BAR -->
+  <div id="topbar">
+    <h1 id="page-title">Flights</h1>
+    <div id="topbar-right">
+      <div id="sync-dot" title="Sync status"></div>
+      <span class="badge red" id="top-badge">1 alert</span>
+    </div>
+  </div>
+
+  <!-- SCREENS -->
+  <div id="screens">
+
+    <div class="screen active" id="screen-flights">
+      <div id="flights-alert"></div>
+      <div class="sec-label">Flights</div>
+      <div id="flights-list"><div class="empty-hint">Loading…</div></div>
+    </div>
+
+    <div class="screen" id="screen-passengers">
+      <div class="sum-grid" id="pax-summary"></div>
+      <div class="sec-label">SCL→LIM boarding pass status</div>
+      <div id="pax-list"><div class="empty-hint">Loading…</div></div>
+    </div>
+
+    <div class="screen" id="screen-checklist">
+      <div id="checklist-list"><div class="empty-hint">Loading…</div></div>
+    </div>
+
+    <div class="screen" id="screen-tours">
+      <div class="tabs" id="tour-tabs">
+        <div class="tab active" onclick="switchTab('tours',this)">Optional tours</div>
+        <div class="tab" onclick="switchTab('tickets',this)">Tickets</div>
+        <div class="tab" onclick="switchTab('info',this)">Info &amp; diet</div>
+      </div>
+
+      <!-- OPTIONAL TOURS -->
+      <div id="tab-tours">
+        <div class="hint">T = TripADeal (prepaid, tallies USD total) · V = booked with Valencia (paid direct, cash)</div>
+        <div class="tour-wrap">
+        <table class="ttbl">
+          <thead id="tour-thead"></thead>
+          <tbody id="tour-tbody"></tbody>
+        </table>
+        </div>
+        <div class="sec-label" style="margin-top:16px">Collected totals</div>
+        <div id="tour-totals"></div>
+
+        <div class="sec-label" style="margin-top:16px">Currency converter</div>
+        <div class="cur-block">
+          <div class="cur-row"><span class="cur-lbl">AUD → USD</span><input class="cur-in" type="number" id="c-au" value="670" oninput="calcCur()"><span class="cur-res" id="r-au"></span></div>
+          <div class="cur-row"><span class="cur-lbl">USD → AUD</span><input class="cur-in" type="number" id="c-ua" value="40" oninput="calcCur()"><span class="cur-res" id="r-ua"></span></div>
+          <div class="cur-row"><span class="cur-lbl">USD → PEN</span><input class="cur-in" type="number" id="c-up" value="120" oninput="calcCur()"><span class="cur-res" id="r-up"></span></div>
+          <div class="cur-row"><span class="cur-lbl">PEN → USD</span><input class="cur-in" type="number" id="c-pu" oninput="calcCur()"><span class="cur-res" id="r-pu"></span></div>
+          <div class="cur-row"><span class="cur-lbl">PEN → AUD</span><input class="cur-in" type="number" id="c-pa" value="1500" oninput="calcCur()"><span class="cur-res" id="r-pa"></span></div>
+          <div class="cur-row"><span class="cur-lbl">AUD → PEN</span><input class="cur-in" type="number" id="c-ap" oninput="calcCur()"><span class="cur-res" id="r-ap"></span></div>
+        </div>
+        <div class="cur-rate">Rates: AUD/USD 0.6895 · USD/PEN 3.422 · PEN/AUD 0.4238</div>
+      </div>
+
+      <!-- TICKETS -->
+      <div id="tab-tickets" style="display:none">
+        <div class="sec-label">Tap a ticket type to expand</div>
+        <div id="tickets-list"><div class="empty-hint">Loading…</div></div>
+        <div class="notes-area">
+          <div class="notes-lbl">⚠ Notes (saved on this device only)</div>
+          <textarea id="ticket-notes" placeholder="e.g. Daniel Lund — no passport on file, follow up with agency" oninput="saveNotes(this.value)"></textarea>
+        </div>
+      </div>
+
+      <!-- INFO & DIET -->
+      <div id="tab-info" style="display:none">
+        <div class="sec-label">Info, diet &amp; birthdays</div>
+        <div id="info-list"><div class="empty-hint">Loading…</div></div>
+      </div>
+
+    </div>
+
+    <div class="screen" id="screen-places">
+      <div class="sec-label">Restaurants</div>
+      <div id="places-restaurants"><div class="empty-hint">Loading…</div></div>
+      <div class="sec-label">Sightseeing</div>
+      <div id="places-sightseeing"></div>
+    </div>
+
+  </div><!-- /screens -->
+
+  <!-- NAVBAR -->
+  <div id="navbar">
+    <div class="nav-item active" id="nav-flights" onclick="switchScreen('flights','Flights')">
+      <i class="ti ti-plane"></i><span>Flights</span>
+    </div>
+    <div class="nav-item" id="nav-passengers" onclick="switchScreen('passengers','Passengers')">
+      <i class="ti ti-users"></i><span>Passengers</span>
+    </div>
+    <div class="nav-item" id="nav-checklist" onclick="switchScreen('checklist','Checklist')">
+      <i class="ti ti-checklist"></i><span>Checklist</span>
+    </div>
+    <div class="nav-item" id="nav-tours" onclick="switchScreen('tours','Tours &amp; info')">
+      <i class="ti ti-ticket"></i><span>Tours</span>
+    </div>
+    <div class="nav-item" id="nav-places" onclick="switchScreen('places','Places')">
+      <i class="ti ti-map"></i><span>Places</span>
+    </div>
+  </div>
+
+</div><!-- /app -->
+
+<script>
+// ─── CONFIG ────────────────────────────────────────────────────────
+// Paste the Apps Script "Web app URL" here after deploying apps-script/Code.gs
+// (Extensions → Apps Script → Deploy → New deployment → Web app). See README.md.
+const CONFIG = {
+  APPS_SCRIPT_URL: 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE',
+};
+
+// ─── SERVICE WORKER ──────────────────────────────────────────────
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+}
+
+// ─── SMALL HELPERS ───────────────────────────────────────────────
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function initials(name) { return (name || '').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '?'; }
+
+// ─── AUTH / API ──────────────────────────────────────────────────
+let TOKEN = localStorage.getItem('ptm_token') || null;
+
+function apiGet(params) {
+  const url = CONFIG.APPS_SCRIPT_URL + '?' + new URLSearchParams(params).toString();
+  return fetch(url).then(r => r.json());
+}
+function apiPost(payload) {
+  return fetch(CONFIG.APPS_SCRIPT_URL, {
+    method: 'POST',
+    // text/plain avoids a CORS preflight OPTIONS request (Apps Script can't
+    // answer those) — the payload is still JSON, just parsed manually server-side.
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify(Object.assign({ token: TOKEN }, payload)),
+  }).then(r => r.json());
+}
+
+function setSync(state) {
+  const dot = document.getElementById('sync-dot');
+  dot.className = state;
+  if (state === 'saved') setTimeout(() => { if (dot.className === 'saved') dot.className = ''; }, 1500);
+}
+
+function write(payload) {
+  setSync('saving');
+  return apiPost(payload).then((res) => {
+    if (!res.ok) throw new Error(res.error || 'Write failed');
+    setSync('saved');
+    return res;
+  }).catch((err) => {
+    setSync('error');
+    alert('Could not save — check your connection and try again.\n' + err.message);
+    loadData(); // re-sync from the sheet to undo any optimistic change
+    throw err;
+  });
+}
+
+// ─── LOCK SCREEN / PIN PAD ───────────────────────────────────────
+let pinBuf = '';
+function buildPinPad() {
+  const pad = document.getElementById('pin-pad');
+  pad.innerHTML = '';
+  const keys = ['1','2','3','4','5','6','7','8','9','','0','⌫'];
+  keys.forEach((k) => {
+    const el = document.createElement('div');
+    if (k === '') { el.className = 'pin-key ghost'; }
+    else {
+      el.className = 'pin-key';
+      el.textContent = k;
+      el.onclick = () => onPinKey(k);
+    }
+    pad.appendChild(el);
+  });
+  renderPinDots();
+}
+function renderPinDots() {
+  const dots = document.getElementById('pin-dots');
+  dots.innerHTML = '';
+  for (let i = 0; i < 4; i++) {
+    const d = document.createElement('div');
+    d.className = 'pin-dot' + (i < pinBuf.length ? ' filled' : '');
+    dots.appendChild(d);
+  }
+}
+function onPinKey(k) {
+  document.getElementById('lock-err').textContent = '';
+  if (k === '⌫') { pinBuf = pinBuf.slice(0, -1); renderPinDots(); return; }
+  if (pinBuf.length >= 4) return;
+  pinBuf += k;
+  renderPinDots();
+  if (pinBuf.length === 4) submitPin();
+}
+function submitPin() {
+  apiGet({ action: 'login', pin: pinBuf }).then((res) => {
+    if (!res.ok) {
+      document.getElementById('lock-err').textContent = res.error || 'Wrong PIN';
+      pinBuf = ''; renderPinDots();
+      return;
+    }
+    TOKEN = res.token;
+    localStorage.setItem('ptm_token', TOKEN);
+    unlock();
+  }).catch(() => {
+    document.getElementById('lock-err').textContent = 'Network error — check your connection';
+    pinBuf = ''; renderPinDots();
+  });
+}
+function unlock() {
+  document.getElementById('lock').classList.add('hidden');
+  loadData();
+  setInterval(() => { if (document.visibilityState === 'visible') loadData(); }, 45000);
+}
+
+// ─── DATA LOAD / RENDER ALL ──────────────────────────────────────
+let DATA = null;
+function loadData() {
+  if (!TOKEN) return;
+  return apiGet({ action: 'data', token: TOKEN }).then((res) => {
+    if (!res.ok) {
+      if (/session/i.test(res.error || '')) { TOKEN = null; localStorage.removeItem('ptm_token'); showLock(); return; }
+      throw new Error(res.error);
+    }
+    DATA = res.data;
+    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces();
+  }).catch((err) => { console.error('loadData failed', err); });
+}
+function showLock() {
+  pinBuf = '';
+  document.getElementById('lock').classList.remove('hidden');
+  renderPinDots();
+}
+
+// ─── NAVIGATION ──────────────────────────────────────────────────
+function switchScreen(id, title) {
+  document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('screen-' + id).classList.add('active');
+  document.getElementById('nav-' + id).classList.add('active');
+  document.getElementById('page-title').textContent = title;
+}
+
+// ─── FLIGHTS ─────────────────────────────────────────────────────
+function renderFlights() {
+  const alertBox = document.getElementById('flights-alert');
+  const list = document.getElementById('flights-list');
+  const badge = document.getElementById('top-badge');
+  if (!DATA) return;
+  const flights = DATA.flights || [];
+  const delayed = flights.filter(f => /delay/i.test(f.status));
+  if (delayed.length) {
+    alertBox.innerHTML = delayed.map(f => `
+      <div class="alert-bar"><div class="alert-dot"></div>
+        <div class="alert-text"><strong>${esc(f.flightNumber)}</strong> on ${esc(f.date)} — ${esc(f.status)}</div>
+      </div>`).join('');
+    badge.className = 'badge red'; badge.textContent = delayed.length + ' alert' + (delayed.length > 1 ? 's' : '');
+  } else {
+    alertBox.innerHTML = '';
+    badge.className = 'badge none';
+  }
+  if (!flights.length) { list.innerHTML = '<div class="empty-hint">No flights yet</div>'; return; }
+  list.innerHTML = flights.map(f => {
+    const isDelayed = /delay/i.test(f.status);
+    return `<div class="card${isDelayed ? ' amb-border' : ''}">
+      <div class="fl-top"><div><div class="fl-num">${esc(f.flightNumber)}</div><div class="fl-sub">${esc(f.date)}</div></div>
+        <span class="pill ${isDelayed ? 'a' : 'g'}">${isDelayed ? 'Delayed' : 'On time'}</span></div>
+      ${f.scheduledTimes ? `<div class="fl-status">${esc(f.scheduledTimes)}</div>` : ''}
+      ${f.status ? `<div class="fl-status">${esc(f.status)}</div>` : ''}
+      ${f.arrival ? `<div class="fl-status">Arrival: ${esc(f.arrival)}</div>` : ''}
+      ${f.link ? `<a class="fl-link" href="${esc(f.link)}" target="_blank">View flight →</a>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ─── PASSENGERS ──────────────────────────────────────────────────
+function renderPassengers() {
+  if (!DATA) return;
+  const pax = DATA.passengers || [];
+  const downloaded = pax.filter(p => /downloaded/i.test(p.boardingStatus)).length;
+  document.getElementById('pax-summary').innerHTML = `
+    <div class="sum-card"><div class="sum-n">${pax.length}</div><div class="sum-l">Total passengers</div></div>
+    <div class="sum-card"><div class="sum-n" style="color:var(--green)">${downloaded}</div><div class="sum-l">BP downloaded</div></div>`;
+  const list = document.getElementById('pax-list');
+  if (!pax.length) { list.innerHTML = '<div class="empty-hint">No passengers yet</div>'; return; }
+  list.innerHTML = pax.map(p => {
+    const ok = /downloaded/i.test(p.boardingStatus);
+    const failed = /fail|error/i.test(p.boardingStatus);
+    const pillClass = ok ? 'g' : failed ? 'r' : 'a';
+    const pillTxt = p.boardingStatus || 'Pending';
+    return `<div class="pax-row"><div class="av">${esc(initials(p.name))}</div>
+      <div style="flex:1"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
+      ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
+      <span class="pill ${pillClass}" style="margin-left:${p.checkinLink ? '6px' : 'auto'}">${esc(pillTxt)}</span>
+    </div>`;
+  }).join('');
+}
+
+// ─── CHECKLIST ───────────────────────────────────────────────────
+function renderChecklist() {
+  if (!DATA) return;
+  const days = DATA.checklist || [];
+  const list = document.getElementById('checklist-list');
+  if (!days.length) { list.innerHTML = '<div class="empty-hint">No checklist items yet</div>'; return; }
+  list.innerHTML = days.map(d => `
+    <div class="day-hdr">${esc(d.day)}${d.title ? ' — ' + esc(d.title) : ''}</div>
+    ${d.items.map(it => `
+      <div class="chk-row"><div class="chk-box${it.done ? ' done' : ''}" onclick="toggleChecklistItem(${it.row}, this)"></div>
+        <div class="chk-lbl${it.done ? ' done' : ''}">${esc(it.text)}</div></div>`).join('')}
+  `).join('');
+}
+function toggleChecklistItem(row, box) {
+  const done = !box.classList.contains('done');
+  box.classList.toggle('done');
+  box.nextElementSibling.classList.toggle('done');
+  write({ action: 'toggleChecklist', row: row, done: done });
+}
+
+// ─── OPTIONAL TOURS ──────────────────────────────────────────────
+function renderTours() {
+  if (!DATA) return;
+  const tours = DATA.tours;
+  const thead = document.getElementById('tour-thead');
+  const tbody = document.getElementById('tour-tbody');
+  const defs = tours.tourDefs;
+
+  thead.innerHTML = `<tr>
+      <th class="lft">Passenger</th>
+      <th style="color:var(--green)">Tips<br><span style="color:var(--text4);font-weight:400;font-size:7px">$${tours.tipPrice}</span></th>
+      ${defs.map(d => `<th colspan="2" class="tsep thdr">${esc(d.name)}<br><span style="color:var(--amber);font-size:7px">$${d.price}</span></th>`).join('')}
+    </tr>
+    <tr>
+      <th class="tsep lft"></th><th></th>
+      ${defs.map(() => `<th class="tsep" style="color:var(--green);font-size:8px">T</th><th style="color:var(--text3);font-size:8px">V</th>`).join('')}
+    </tr>`;
+
+  const rows = tours.rows;
+  tbody.innerHTML = rows.map(r => `
+    <tr>
+      <td class="nm">${esc(r.name)}</td>
+      <td><div class="ck${r.tip ? ' y' : ''}" onclick="toggleTip('${r.id}', this)"></div></td>
+      ${r.tours.map((t, ti) => `
+        <td class="tsep"><div class="ck${t.t ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, 't', this)"></div></td>
+        <td><div class="ck${t.v ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, 'v', this)"></div></td>
+      `).join('')}
+    </tr>`).join('') + `
+    <tr class="cnt-row">
+      <td class="nm" style="color:var(--text4);font-size:9px">Count</td>
+      <td style="color:var(--green)">${rows.filter(r => r.tip).length || ''}</td>
+      ${defs.map((d, ti) => `
+        <td class="tsep" style="color:var(--green)">${rows.filter(r => r.tours[ti].t).length || ''}</td>
+        <td style="color:var(--text3)">${rows.filter(r => r.tours[ti].v).length || ''}</td>
+      `).join('')}
+    </tr>`;
+
+  renderTourTotals();
+}
+function renderTourTotals() {
+  const area = document.getElementById('tour-totals');
+  const tours = DATA.tours;
+  const defs = tours.tourDefs;
+  const rows = tours.rows;
+  const mkBlock = (title, rowsHtml) => `<div class="tot-block"><div class="tot-title">${esc(title)}</div>${rowsHtml}</div>`;
+  const mkRow = (lbl, val) => `<div class="tot-row"><div class="tot-lbl">${esc(lbl)}</div><div class="tot-usd">${esc(val)}</div></div>`;
+
+  let html = '';
+  const tipCount = rows.filter(r => r.tip).length;
+  html += mkBlock('Tips', tipCount ? mkRow(tipCount + ' pax × $' + tours.tipPrice, '$' + (tipCount * tours.tipPrice).toFixed(2)) : mkRow('No tips recorded yet', ''));
+
+  let grandUsd = tipCount * tours.tipPrice;
+  defs.forEach((d, ti) => {
+    const n = rows.filter(r => r.tours[ti].t).length;
+    const vN = rows.filter(r => r.tours[ti].v).length;
+    if (!n && !vN) return;
+    grandUsd += n * d.price;
+    let rowsHtml = '';
+    if (n) rowsHtml += mkRow(n + ' pax × $' + d.price + ' (TripADeal)', '$' + (n * d.price).toFixed(2));
+    if (vN) rowsHtml += `<div class="tot-row"><div class="tot-lbl">${vN} pax booked with Valencia (cash)</div><div class="tot-lbl">—</div></div>`;
+    html += mkBlock(d.name, rowsHtml);
+  });
+
+  html += `<div class="grand-block"><div class="grand-title">Grand total (TripADeal + tips)</div>
+    <div class="grand-row"><div class="grand-lbl">USD</div><div class="grand-val">$${grandUsd.toFixed(2)}</div></div></div>`;
+  area.innerHTML = html;
+}
+function toggleTip(id, el) {
+  const on = !el.classList.contains('y');
+  el.classList.toggle('y');
+  const row = DATA.tours.rows.find(r => r.id === id); if (row) row.tip = on;
+  renderTourTotals();
+  write({ action: 'toggleTip', id: id, value: on });
+}
+function toggleTourTick(id, tourIndex, which, el) {
+  const on = !el.classList.contains('y');
+  el.classList.toggle('y');
+  const row = DATA.tours.rows.find(r => r.id === id); if (row) row.tours[tourIndex][which] = on;
+  renderTourTotals();
+  write({ action: 'toggleTourTick', id: id, tourIndex: tourIndex, which: which, value: on });
+}
+
+// ─── TICKETS ─────────────────────────────────────────────────────
+function renderTickets() {
+  if (!DATA) return;
+  const tickets = DATA.tickets;
+  const list = document.getElementById('tickets-list');
+  const notes = localStorage.getItem('ptm_ticket_notes') || '';
+  document.getElementById('ticket-notes').value = notes;
+  if (!tickets.ticketDefs.length) { list.innerHTML = '<div class="empty-hint">No tickets yet</div>'; return; }
+  list.innerHTML = tickets.ticketDefs.map((def, di) => {
+    const paxRows = tickets.rows;
+    const checkedCount = paxRows.filter(r => r.checks[di] && r.checks[di].checked).length;
+    const meta = [def.date, def.time].filter(Boolean).join(' · ');
+    return `<div class="tkt-sec">
+      <div class="tkt-hdr" onclick="toggleTicketSection(this)">
+        <span class="tkt-title">${esc(def.title)}</span>
+        <div class="tkt-meta">${meta ? `<span class="tkt-dt">${esc(meta)}</span>` : ''}
+          <span class="tkt-badge${checkedCount ? ' has' : ''}" id="tb${di}">${checkedCount}/${paxRows.length}</span>
+          <i class="ti ti-chevron-down tkt-chev"></i></div>
+      </div>
+      <div class="tkt-body">
+        ${paxRows.map(r => {
+          const c = r.checks[di];
+          const missing = !r.passport;
+          return `<div class="tkt-pax"><div class="tkt-av${missing ? ' warn' : ''}">${esc(initials(r.name))}</div>
+            <span class="tkt-pname${missing ? ' warn' : ''}">${esc(r.name)}</span>
+            <span class="tkt-pp${missing ? ' warn' : ''}">${missing ? '⚠ missing' : esc(r.passport)}</span>
+            <div class="ck${c.checked ? ' y' : ''}" onclick="toggleTicket('${r.id}', ${c.col}, ${di}, this)"></div>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+function toggleTicketSection(hdr) {
+  hdr.nextElementSibling.classList.toggle('open');
+  hdr.querySelector('.tkt-chev').classList.toggle('open');
+}
+function toggleTicket(id, col, defIndex, el) {
+  const on = !el.classList.contains('y');
+  el.classList.toggle('y');
+  const row = DATA.tickets.rows.find(r => r.id === id);
+  if (row) row.checks[defIndex].checked = on;
+  const sec = el.closest('.tkt-body');
+  const total = sec.querySelectorAll('.ck').length;
+  const checked = sec.querySelectorAll('.ck.y').length;
+  const badge = document.getElementById('tb' + defIndex);
+  if (badge) { badge.textContent = checked + '/' + total; badge.className = 'tkt-badge' + (checked > 0 ? ' has' : ''); }
+  write({ action: 'toggleTicket', id: id, col: col, value: on });
+}
+function saveNotes(v) { localStorage.setItem('ptm_ticket_notes', v); }
+
+// ─── INFO & DIET / BIRTHDAYS ─────────────────────────────────────
+function dietTag(diet) {
+  const d = (diet || '').toLowerCase();
+  if (!d || /no restriction/.test(d)) return { cls: 'none', txt: diet || 'No restrictions' };
+  if (/veg/.test(d)) return { cls: 'veg', txt: diet };
+  if (/gluten/.test(d)) return { cls: 'gf', txt: diet };
+  if (/seafood|shellfish|fish/.test(d)) return { cls: 'sf', txt: diet };
+  return { cls: 'none', txt: diet };
+}
+function renderInfo() {
+  if (!DATA) return;
+  const info = DATA.info || [];
+  const list = document.getElementById('info-list');
+  if (!info.length) { list.innerHTML = '<div class="empty-hint">No passenger info yet</div>'; return; }
+  list.innerHTML = info.map(p => {
+    const tag = dietTag(p.diet);
+    const hasBday = !!p.birthday;
+    return `<div class="info-row"><div class="info-top"><div class="av">${esc(initials(p.name))}</div>
+      <div style="flex:1"><div class="pax-name">${esc(p.name)}</div><span class="diet-tag ${tag.cls}">${esc(tag.txt)}</span></div>
+      <button class="bday-btn ${hasBday ? 'on' : 'off'}" onclick="togBday('${p.id}', this)">${hasBday ? '🎂 During tour!' : '🎂 Birthday?'}</button></div>
+      <div class="bday-area${hasBday ? ' open' : ''}"><span class="bday-lbl">Date:</span>
+        <input type="date" class="bday-input" value="${esc(p.birthday)}" onchange="setBirthday('${p.id}', this.value)"></div>
+    </div>`;
+  }).join('');
+}
+function togBday(id, btn) {
+  const isOn = btn.classList.contains('on');
+  const area = btn.closest('.info-row').querySelector('.bday-area');
+  if (isOn) {
+    // turning off clears the stored date
+    btn.classList.remove('on'); btn.classList.add('off'); btn.textContent = '🎂 Birthday?';
+    area.classList.remove('open');
+    area.querySelector('.bday-input').value = '';
+    setBirthday(id, '');
+  } else {
+    btn.classList.remove('off'); btn.classList.add('on'); btn.textContent = '🎂 During tour!';
+    area.classList.add('open');
+  }
+}
+function setBirthday(id, value) {
+  const row = DATA.info.find(p => p.id === id); if (row) row.birthday = value;
+  write({ action: 'setBirthday', id: id, value: value });
+}
+
+// ─── PLACES ──────────────────────────────────────────────────────
+function renderPlaces() {
+  if (!DATA) return;
+  const places = DATA.places || { restaurants: [], sightseeing: [] };
+  const card = (p, icon) => `<div class="rec-card"><div class="rec-city">${esc(p.city)}</div>
+    <div class="rec-lnk"><div class="rec-left"><i class="ti ${icon} rec-icon"></i><span class="rec-txt">TripAdvisor ${esc(p.city)}</span></div>
+    <div class="wa-btn" onclick="waShare('${esc(p.url)}')"><i class="ti ti-brand-whatsapp"></i>Share</div></div></div>`;
+  document.getElementById('places-restaurants').innerHTML = places.restaurants.length
+    ? places.restaurants.map(p => card(p, 'ti-tools-kitchen-2')).join('') : '<div class="empty-hint">None yet</div>';
+  document.getElementById('places-sightseeing').innerHTML = places.sightseeing.length
+    ? places.sightseeing.map(p => card(p, 'ti-map-pin')).join('') : '<div class="empty-hint">None yet</div>';
+}
+function waShare(url) { window.location.href = 'whatsapp://send?text=' + encodeURIComponent(url); }
+
+// ─── SUB-TABS (Tours screen) ─────────────────────────────────────
+function switchTab(view, el) {
+  ['tours', 'tickets', 'info'].forEach(v => {
+    const e = document.getElementById('tab-' + v);
+    if (e) e.style.display = v === view ? 'block' : 'none';
+  });
+  document.querySelectorAll('#tour-tabs .tab').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+}
+
+// ─── CURRENCY CALCULATOR (static utility, not sheet-backed) ─────
+const R = { audUsd: 0.6895, usdAud: 1.4503, usdPen: 3.422, penUsd: 0.2922, penAud: 0.4238, audPen: 2.3595 };
+function calcCur() {
+  const g = id => { const e = document.getElementById(id); return e ? parseFloat(e.value) || 0 : 0; };
+  const s = (id, val, sym) => { const e = document.getElementById(id); if (e) e.textContent = val ? sym + val.toFixed(2) : '—'; };
+  s('r-au', g('c-au') * R.audUsd, '$');
+  s('r-ua', g('c-ua') * R.usdAud, 'A$');
+  s('r-up', g('c-up') * R.usdPen, 'S/');
+  s('r-pu', g('c-pu') * R.penUsd, '$');
+  s('r-pa', g('c-pa') * R.penAud, 'A$');
+  s('r-ap', g('c-ap') * R.audPen, 'S/');
+}
+
+// ─── INIT ────────────────────────────────────────────────────────
+buildPinPad();
+calcCur();
+if (TOKEN) unlock(); else showLock();
+</script>
+</body>
+</html>
