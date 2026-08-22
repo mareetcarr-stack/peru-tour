@@ -1,4 +1,4 @@
-# Peru Tour Manager
+# Yenrri's App (Peru Tour Manager)
 
 A light-themed single-page PWA for managing Yenrri's Peru tours — flights, passenger check-in status, daily checklist, optional tours, tickets, traveller info/birthdays, and recommended places. Reads and writes live data from/to a Google Sheet through a small Google Apps Script backend. No PIN, no accounts, no OAuth — the deployed Apps Script URL is the only thing gating access.
 

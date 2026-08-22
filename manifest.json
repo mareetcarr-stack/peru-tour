@@ -1,6 +1,6 @@
 {
-  "name": "Peru Tour Manager",
-  "short_name": "Peru Tour",
+  "name": "Yenrri's App",
+  "short_name": "Yenrri's App",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
