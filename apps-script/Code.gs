@@ -118,6 +118,30 @@ function fullName_(first, second) {
   return [first, second].filter(Boolean).join(' ').trim();
 }
 
+// Sheets silently promotes some typed cells (e.g. "24/02/36") to real Date
+// objects. JSON.stringify then serializes those via Date#toJSON, which
+// applies UTC + JS's 2-digit-year rule (36 → 1936, not 2036) — garbage for
+// display. Format any Date back to a plain d/M/yyyy string; everything else
+// passes through untouched.
+function cellStr_(v) {
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'dd/MM/yyyy');
+  }
+  return v == null ? '' : v;
+}
+
+// Same idea, but formatted for an HTML <input type="date"> (needs yyyy-MM-dd).
+// Used only for the Birthday column, which round-trips through that input.
+function isoDate_(v) {
+  if (v instanceof Date) {
+    return Utilities.formatDate(v, Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  }
+  if (!v) return '';
+  // Already-typed text like "2026-08-10" or "10/08/2026" — leave as-is if it
+  // already looks ISO, otherwise just pass through (best effort).
+  return String(v);
+}
+
 // ─── READ: full data blob ────────────────────────────────────────────────
 function getAllData_() {
   return {
@@ -141,9 +165,9 @@ function getCheckin_() {
       id: String(row[0]),
       first: row[1], second: row[2], name: fullName_(row[1], row[2]),
       arrived: bool_(row[3]),
-      pnr: row[4], passport: row[5], passportExpiry: row[6], orderId: row[7],
+      pnr: row[4], passport: row[5], passportExpiry: cellStr_(row[6]), orderId: row[7],
       checkinLink: row[8], boardingStatus: row[9] || '',
-      actualArrival: row[10] || '', errorFlag: row[11] || '', sclLimDone: row[12] || '',
+      actualArrival: cellStr_(row[10]) || '', errorFlag: row[11] || '', sclLimDone: row[12] || '',
     });
   }
   return out;
@@ -156,7 +180,7 @@ function getFlights_() {
     const row = rows[r];
     if (!row[1]) continue; // no flight number → skip
     out.push({
-      date: row[0], flightNumber: row[1], link: row[2] || '',
+      date: cellStr_(row[0]), flightNumber: row[1], link: row[2] || '',
       status: row[3] || '', departure: row[4] || '', arrival: row[5] || '',
     });
   }
@@ -227,7 +251,7 @@ function getTickets_() {
   const defs = [];
   for (let i = 4; i < headers.length; i++) {
     if (!headers[i]) continue;
-    defs.push({ col: i, title: String(headers[i]).trim(), date: dateRow[i] || '', time: timeRow[i] || '' });
+    defs.push({ col: i, title: String(headers[i]).trim(), date: cellStr_(dateRow[i]) || '', time: cellStr_(timeRow[i]) || '' });
   }
   const out = [];
   for (let r = 3; r < rows.length; r++) {
@@ -249,7 +273,7 @@ function getInfo_() {
     if (row[1] === '' && row[2] === '') continue;
     out.push({
       id: String(row[0]), name: fullName_(row[1], row[2]),
-      birthday: row[3] || '', age: row[4] || '', diet: row[5] || '',
+      birthday: isoDate_(row[3]), age: row[4] || '', diet: row[5] || '',
     });
   }
   return out;

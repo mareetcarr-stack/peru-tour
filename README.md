@@ -24,7 +24,7 @@ GitHub Pages can only serve static files, so the Apps Script Web App is the tiny
 6. Open `index.html` in this folder and paste that URL into:
    ```js
    const CONFIG = {
-     APPS_SCRIPT_URL: 'PASTE_YOUR_APPS_SCRIPT_EXEC_URL_HERE',
+     APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycby0-SNX19SxU-KRk64b1ptP1NBjYghoIFri0GXTujx16vjGkh0wEh1WzGhXFNjG6JndeQ/exec',
    };
    ```
 
