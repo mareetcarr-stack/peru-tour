@@ -89,7 +89,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .fl-num{color:var(--text);font-size:15px;font-weight:600}
 .fl-sub{color:var(--text3);font-size:11px;margin-top:2px}
 .fl-status{color:var(--text3);font-size:11px;margin-top:8px;line-height:1.4;padding-top:8px;border-top:1px solid var(--border)}
-.fl-link{color:var(--blue);font-size:11px;margin-top:6px;display:inline-block;font-weight:600}
+.fl-link{color:var(--purple);font-size:11px;margin-top:6px;display:inline-block;font-weight:600}
 
 /* ─── PASSENGERS SCREEN ────────────────────────────────────────── */
 .sum-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;margin-bottom:14px}
@@ -256,6 +256,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
         <div class="tab active" onclick="switchTab('tours',this)">Optional tours</div>
         <div class="tab" onclick="switchTab('tickets',this)">Tickets</div>
         <div class="tab" onclick="switchTab('info',this)">Info &amp; diet</div>
+        <div class="tab" onclick="switchTab('receipts',this)">Receipts</div>
       </div>
 
       <!-- OPTIONAL TOURS -->
@@ -297,6 +298,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
       <div id="tab-info" style="display:none">
         <div class="sec-label">Info, diet &amp; birthdays</div>
         <div id="info-list"><div class="empty-hint">Loading…</div></div>
+      </div>
+
+      <!-- RECEIPTS -->
+      <div id="tab-receipts" style="display:none">
+        <div class="sec-label">Receipts</div>
+        <div id="receipts-list"><div class="empty-hint">Loading…</div></div>
       </div>
 
     </div>
@@ -419,7 +426,7 @@ function loadData() {
   return apiGet({ action: 'data' }).then((res) => {
     if (!res.ok) throw new Error(res.error);
     DATA = res.data;
-    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces();
+    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts();
   }).catch((err) => { console.error('loadData failed', err); });
 }
 
@@ -495,7 +502,6 @@ function renderPassengers() {
       ${isYenrri
         ? '<div class="ck arr-ck" style="visibility:hidden"></div>'
         : `<div class="ck arr-ck${p.arrived ? ' y' : ''}" title="Arrived at airport" onclick="toggleArrived('${p.id}', this)"></div>`}
-      <div class="av">${esc(initials(p.name))}</div>
       <div style="flex:1"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
       ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
       <span class="pill ${pillClass}" style="margin-left:${p.checkinLink ? '6px' : 'auto'}">${esc(pillTxt)}</span>
@@ -825,9 +831,32 @@ function renderPlaces() {
 }
 function waShare(url) { window.location.href = 'whatsapp://send?text=' + encodeURIComponent(url); }
 
+// ─── RECEIPTS ────────────────────────────────────────────────────
+const CUR_SYM = { USD: '$', PEN: 'S/', AUD: 'A$' };
+function renderReceipts() {
+  if (!DATA) return;
+  const receipts = DATA.receipts || [];
+  const list = document.getElementById('receipts-list');
+  if (!receipts.length) { list.innerHTML = '<div class="empty-hint">No receipts yet</div>'; return; }
+  list.innerHTML = receipts.map((r) => {
+    const sym = CUR_SYM[r.currency] || (r.currency ? r.currency + ' ' : '');
+    const amountTxt = r.amount ? `${sym}${r.amount.toFixed(2)}` : '—';
+    return `<div class="rec-card">
+      <div class="rec-city">${esc(r.observation || ' ')}</div>
+      <div class="rec-lnk" style="border-bottom:none;padding-bottom:0">
+        <div class="rec-left" style="flex-direction:column;align-items:flex-start;gap:2px">
+          <span class="rec-txt" style="color:var(--text)">${esc(r.description)}</span>
+          ${r.paymentMethod ? `<span style="color:var(--text4);font-size:10px">${esc(r.paymentMethod)}</span>` : ''}
+        </div>
+        <span style="color:var(--green);font-size:13px;font-weight:700;flex-shrink:0;margin-left:8px">${esc(amountTxt)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
 // ─── SUB-TABS (Tours screen) ─────────────────────────────────────
 function switchTab(view, el) {
-  ['tours', 'tickets', 'info'].forEach(v => {
+  ['tours', 'tickets', 'info', 'receipts'].forEach(v => {
     const e = document.getElementById('tab-' + v);
     if (e) e.style.display = v === view ? 'block' : 'none';
   });

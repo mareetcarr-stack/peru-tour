@@ -41,6 +41,7 @@ const SHEET_NAMES = {
   info: 'B-DAYS, AGES, DIET',
   flights: 'FLIGHT STATUS',
   recs: 'RECOMMENDATIONS',
+  receipts: 'RECEIPTS',
 };
 
 // ─── ENTRY POINTS ────────────────────────────────────────────────────────
@@ -146,6 +147,7 @@ function getAllData_() {
     tickets: getTickets_(),
     info: getInfo_(),
     places: getRecs_(),
+    receipts: getReceipts_(),
   };
 }
 
@@ -307,6 +309,24 @@ function getRecs_() {
     if (sight) sightseeing.push(sight);
   }
   return { restaurants: restaurants, sightseeing: sightseeing };
+}
+
+function getReceipts_() {
+  const rows = sheet_('receipts').getDataRange().getValues();
+  const out = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const description = String(row[0] || '').trim();
+    if (!description) continue; // skip blank rows
+    out.push({
+      description: description,
+      observation: String(row[1] || '').trim(),
+      paymentMethod: String(row[2] || '').trim(),
+      currency: String(row[3] || '').trim(),
+      amount: parseMoney_(row[4]),
+    });
+  }
+  return out;
 }
 
 // ─── WRITE ───────────────────────────────────────────────────────────────
