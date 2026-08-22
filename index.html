@@ -348,6 +348,18 @@ if ('serviceWorker' in navigator) {
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function initials(name) { return (name || '').trim().split(/\s+/).map(w => w[0] || '').join('').slice(0, 2).toUpperCase() || '?'; }
 function stripEmoji(s) { return String(s || '').replace(/[\u{1F000}-\u{1FFFF}\u{2190}-\u{2BFF}\u{FE0F}\u{200D}]/gu, '').trim(); }
+// Normalize the free-form boarding-status text from the sheet down to a
+// short word so the pill stays a consistent width and the Check-in button
+// next to it doesn't get pushed off-center by a long status string.
+function shortStatus(s) {
+  const t = stripEmoji(s);
+  if (/expired/i.test(t)) return 'Expired';
+  if (/downloaded/i.test(t)) return 'Downloaded';
+  if (/fail|error/i.test(t)) return 'Failed';
+  if (/skip/i.test(t)) return 'Skipped';
+  if (!t) return 'Pending';
+  return t;
+}
 const SHORT_MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 // "11:15 am" -> "11:15", "8am / 9am cir.3" -> "08:00 / 09:00 cir.3" — converts
 // every 12-hour time found in a free-form string, leaving the rest as-is.
@@ -477,7 +489,7 @@ function renderPassengers() {
     const ok = /downloaded/i.test(p.boardingStatus);
     const failed = /fail|error/i.test(p.boardingStatus);
     const pillClass = ok ? 'g' : failed ? 'r' : 'a';
-    const pillTxt = stripEmoji(p.boardingStatus) || 'Pending';
+    const pillTxt = shortStatus(p.boardingStatus);
     const isYenrri = p.id === '0';
     return `<div class="pax-row">
       ${isYenrri
@@ -628,9 +640,9 @@ function updateRowTotalCell_(id) {
 }
 
 function rowTotalHtml_(r, tours) {
+  // Tips are tracked separately in their own column and deliberately left
+  // out of this Total — it's meant to be the tour-purchases total only.
   let usd = 0, pen = 0;
-  if (r.tip.currency === 'USD') usd += tours.tipPrice;
-  else if (r.tip.currency === 'PEN') pen += r.tip.amount;
   r.tours.forEach((t, ti) => {
     if (t.v.currency === 'USD') usd += tours.tourDefs[ti].price;
     else if (t.v.currency === 'PEN') pen += t.v.amount;
