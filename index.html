@@ -601,7 +601,7 @@ function toggleCancelled(id, currentlyCancelled) {
   renderPassengers(); renderTours(); renderTickets(); renderInfo();
   write({ action: 'toggleCancelled', id: id, value: newValue });
   if (newValue) {
-    const msg = `Hi, ${p.name}${p.passport ? ' (passport ' + p.passport + ')' : ''} has cancelled their participation in this tour and will not be joining us in Peru. Please cancel any tickets, tours, or reservations booked for them. Thank you.`;
+    const msg = `Hola, ${p.name}${p.passport ? ' (pasaporte ' + p.passport + ')' : ''} ha cancelado su participación en este tour y no viajará a Perú. Por favor cancelen todos los boletos, tours y reservas hechos a su nombre. Muchas gracias.`;
     waShare(msg);
   }
 }
