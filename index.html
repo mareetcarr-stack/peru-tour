@@ -36,6 +36,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
 /* ─── APP SHELL ────────────────────────────────────────────────── */
 #app{display:flex;flex-direction:column;height:100%;max-width:430px;margin:0 auto;position:relative;overflow:hidden;background:var(--bg)}
+/* On iPad-width screens and up, the phone-width column was floating in a sea
+   of empty black margin either side — stretch it out to use the space
+   instead of just centering a tiny phone layout on a much bigger screen. */
+@media (min-width:600px){#app{max-width:680px}}
 #topbar{padding:12px 20px 8px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;background:var(--bg)}
 #topbar h1{font-size:20px;font-weight:600;color:var(--text)}
 .badge{font-size:11px;padding:3px 10px;border-radius:20px;font-weight:500}
