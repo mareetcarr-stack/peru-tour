@@ -1069,9 +1069,12 @@ function renderBoardingPassCard() {
   // A full run can take several minutes — without this, "Running…" gives
   // no sign of whether it's actually moving. boarding-pass-runner.js's
   // output is streamed by the watcher into a "current/total" Progress
-  // cell as each passenger is processed; the ETA is a simple linear
-  // extrapolation from elapsed time so far, not exact, but close enough
-  // to reassure Yenrri it isn't hanging.
+  // cell as each booking is processed — "bookings" not "passengers",
+  // since a booking (couple/family sharing a reservation) can hold more
+  // than one traveller; the count matches "N with links" from the
+  // runner's log. The ETA is a simple linear extrapolation from elapsed
+  // time so far, not exact, but close enough to reassure Yenrri it isn't
+  // hanging.
   let progressHtml = '';
   const m = /^(\d+)\/(\d+)$/.exec(s.progress || '');
   if (s.status === 'running' && m) {
@@ -1084,7 +1087,7 @@ function renderBoardingPassCard() {
       etaText = ` · ~${remainingMin} min left`;
     }
     progressHtml = `
-      <div class="tot-row"><div class="tot-lbl">Progress</div><div style="font-size:11px;color:var(--text2)">${cur}/${total} passengers${etaText}</div></div>
+      <div class="tot-row"><div class="tot-lbl">Progress</div><div style="font-size:11px;color:var(--text2)">${cur}/${total} bookings${etaText}</div></div>
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>`;
   }
 
