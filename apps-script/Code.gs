@@ -183,6 +183,35 @@ function getAllData_() {
   };
 }
 
+// ─── CANCELLED TRAVELLERS ──────────────────────────────────────────────
+// A traveller who dropped out before the tour (but was never removed from
+// the sheet's row layout — every tab is keyed by passenger ID, and
+// reshuffling rows would break that) gets marked here instead. Column N
+// of CHECK-IN STATUS (the master passenger tab) holds this — every other
+// tab that's keyed by passenger ID looks it up from here rather than
+// duplicating a "Cancelled" column on each of its own sheets.
+const CANCELLED_COL_ = 14; // column N, 1-based
+function ensureCancelledHeader_() {
+  const sh = sheet_('checkin');
+  const header = sh.getRange(1, CANCELLED_COL_).getValue();
+  if (!header) sh.getRange(1, CANCELLED_COL_).setValue('Cancelled');
+}
+function getCancelledIds_() {
+  const rows = sheet_('checkin').getDataRange().getValues();
+  const ids = new Set();
+  for (let r = 1; r < rows.length; r++) {
+    if (bool_(rows[r][CANCELLED_COL_ - 1])) ids.add(String(rows[r][0]));
+  }
+  return ids;
+}
+function toggleCancelled_(id, value) {
+  ensureCancelledHeader_();
+  const sh = sheet_('checkin');
+  const row = findRowById_(sh, id, 1);
+  sh.getRange(row, CANCELLED_COL_).setValue(value ? 'TRUE' : 'FALSE');
+  return { id: id, value: value };
+}
+
 function getCheckin_() {
   const rows = sheet_('checkin').getDataRange().getValues();
   const out = [];
@@ -196,6 +225,7 @@ function getCheckin_() {
       pnr: row[4], passport: row[5], passportExpiry: cellStr_(row[6]), orderId: row[7],
       checkinLink: row[8], boardingStatus: row[9] || '',
       actualArrival: cellStr_(row[10]) || '', errorFlag: row[11] || '', sclLimDone: row[12] || '',
+      cancelled: bool_(row[CANCELLED_COL_ - 1]),
     });
   }
   return out;
@@ -270,6 +300,7 @@ function getTours_() {
   const totalCol = headers.findIndex((h) => String(h).trim().toUpperCase() === 'TOTAL');
   const paidCol = headers.findIndex((h) => String(h).trim().toUpperCase() === 'PAID');
 
+  const cancelledIds = getCancelledIds_();
   const out = [];
   for (let r = 2; r < rows.length; r++) {
     const row = rows[r];
@@ -280,6 +311,7 @@ function getTours_() {
       tours: defs.map((d) => ({ name: d.name, t: bool_(row[d.colT]), v: parseCC_(row[d.colV]) })),
       total: totalCol >= 0 ? row[totalCol] : '',
       paid: paidCol >= 0 ? bool_(row[paidCol]) : false,
+      cancelled: cancelledIds.has(String(row[0])),
     });
   }
   return {
@@ -299,6 +331,7 @@ function getTickets_() {
     if (!headers[i]) continue;
     defs.push({ col: i, title: String(headers[i]).trim(), date: cellStr_(dateRow[i]) || '', time: cellStr_(timeRow[i]) || '' });
   }
+  const cancelledIds = getCancelledIds_();
   const out = [];
   for (let r = 3; r < rows.length; r++) {
     const row = rows[r];
@@ -306,6 +339,7 @@ function getTickets_() {
     out.push({
       id: String(row[0]), name: fullName_(row[1], row[2]), passport: row[3] || '',
       checks: defs.map((d) => ({ col: d.col, checked: bool_(row[d.col]) })),
+      cancelled: cancelledIds.has(String(row[0])),
     });
   }
   return { ticketDefs: defs, rows: out };
@@ -313,6 +347,7 @@ function getTickets_() {
 
 function getInfo_() {
   const rows = sheet_('info').getDataRange().getValues();
+  const cancelledIds = getCancelledIds_();
   const out = [];
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -320,6 +355,7 @@ function getInfo_() {
     out.push({
       id: String(row[0]), name: fullName_(row[1], row[2]),
       birthday: isoDate_(row[3]), age: row[4] || '', diet: row[5] || '',
+      cancelled: cancelledIds.has(String(row[0])),
     });
   }
   return out;
@@ -671,6 +707,7 @@ function handleWrite_(body) {
   switch (body.action) {
     case 'toggleChecklist': return toggleChecklistItem_(body.row, body.done);
     case 'toggleArrived': return toggleArrived_(body.id, body.value);
+    case 'toggleCancelled': return toggleCancelled_(body.id, body.value);
     case 'toggleTourTick': return toggleTourTick_(body.id, body.tourIndex, body.value);
     case 'setTourValencia': return setTourValencia_(body.id, body.tourIndex, body.currency, body.amount);
     case 'setTip': return setTip_(body.id, body.currency, body.amount);
