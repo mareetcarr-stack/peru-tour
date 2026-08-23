@@ -45,6 +45,20 @@ const SHEET_NAMES = {
   sunat: 'SUNAT_TRIGGER',
 };
 
+// The "TripADeal" Drive folder (Daily Itineraries, Tour Leader Reports,
+// etc.) — this script runs as the folder owner, so no extra sharing or
+// credentials are needed to read it.
+const DOCS_FOLDER_ID = '18quQBR8nf_eSVYKCA0ThIJXZoVJZYTbQ';
+// Run this once from the Apps Script editor (select it in the function
+// dropdown → Run) to give Yenrri edit access to everything in that folder,
+// so tapping a document in the app actually lets him edit it rather than
+// just view it.
+function shareDocsFolderWithYenrri() {
+  const folder = DriveApp.getFolderById(DOCS_FOLDER_ID);
+  folder.addEditor('yenrrichacon@gmail.com');
+  Logger.log('Shared "%s" with yenrrichacon@gmail.com as an editor.', folder.getName());
+}
+
 // ─── ENTRY POINTS ────────────────────────────────────────────────────────
 function doGet(e) {
   try {
@@ -160,6 +174,7 @@ function getAllData_() {
     places: getRecs_(),
     receipts: getReceipts_(),
     sunat: getSunatStatus_(),
+    documents: getDocuments_(),
   };
 }
 
@@ -321,6 +336,54 @@ function getRecs_() {
     if (sight) sightseeing.push(sight);
   }
   return { restaurants: restaurants, sightseeing: sightseeing };
+}
+
+// ─── DOCUMENTS (Drive folder) ──────────────────────────────────────────────
+function docType_(mimeType) {
+  if (mimeType === MimeType.GOOGLE_DOCS) return 'doc';
+  if (mimeType === MimeType.GOOGLE_SHEETS) return 'sheet';
+  if (mimeType === MimeType.GOOGLE_SLIDES) return 'slides';
+  if (mimeType === MimeType.PDF) return 'pdf';
+  return 'file';
+}
+
+// "Day 2: Lima city tour" / "Day 13: Puno" sort in proper day order (not
+// lexicographic, which would put "Day 10" before "Day 2").
+function naturalKey_(name) {
+  const m = String(name).match(/(\d+)/);
+  return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
+}
+
+function listFolderFiles_(folder) {
+  const tripSheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
+  const out = [];
+  const it = folder.getFiles();
+  while (it.hasNext()) {
+    const f = it.next();
+    if (f.getId() === tripSheetId) continue; // the trip Sheet lives in this folder too — already in the app
+    out.push({
+      name: f.getName(),
+      url: f.getUrl(),
+      type: docType_(f.getMimeType()),
+      updated: f.getLastUpdated().getTime(),
+    });
+  }
+  out.sort((a, b) => naturalKey_(a.name) - naturalKey_(b.name) || a.name.localeCompare(b.name));
+  return out;
+}
+
+function getDocuments_() {
+  const root = DriveApp.getFolderById(DOCS_FOLDER_ID);
+  const sections = [];
+  const subfolders = root.getFolders();
+  while (subfolders.hasNext()) {
+    const sub = subfolders.next();
+    sections.push({ name: sub.getName(), files: listFolderFiles_(sub) });
+  }
+  sections.sort((a, b) => a.name.localeCompare(b.name));
+  const rootFiles = listFolderFiles_(root);
+  if (rootFiles.length) sections.push({ name: 'Other documents', files: rootFiles });
+  return { folderName: root.getName(), sections: sections };
 }
 
 // Reads the actual dropdown list off an existing validated cell, so the

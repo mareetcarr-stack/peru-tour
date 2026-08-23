@@ -321,6 +321,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
       <div id="places-sightseeing"></div>
     </div>
 
+    <div class="screen" id="screen-docs">
+      <div id="docs-list"><div class="empty-hint">Loading…</div></div>
+    </div>
+
   </div><!-- /screens -->
 
   <!-- NAVBAR -->
@@ -339,6 +343,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
     </div>
     <div class="nav-item" id="nav-places" onclick="switchScreen('places','Places')">
       <i class="ti ti-map"></i><span>Places</span>
+    </div>
+    <div class="nav-item" id="nav-docs" onclick="switchScreen('docs','Docs')">
+      <i class="ti ti-folder"></i><span>Docs</span>
     </div>
   </div>
 
@@ -432,7 +439,7 @@ function loadData() {
   return apiGet({ action: 'data' }).then((res) => {
     if (!res.ok) throw new Error(res.error);
     DATA = res.data;
-    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts(); renderSunatCard();
+    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts(); renderSunatCard(); renderDocuments();
   }).catch((err) => { console.error('loadData failed', err); });
 }
 
@@ -846,6 +853,26 @@ function renderPlaces() {
     ? places.sightseeing.map(p => card(p, 'ti-map-pin')).join('') : '<div class="empty-hint">None yet</div>';
 }
 function waShare(url) { window.location.href = 'whatsapp://send?text=' + encodeURIComponent(url); }
+
+// ─── DOCUMENTS (Drive folder — tap opens Google's own editor) ───────────
+const DOC_ICON = { doc: 'ti-file-text', sheet: 'ti-table', slides: 'ti-presentation', pdf: 'ti-file-type-pdf' };
+function renderDocuments() {
+  if (!DATA) return;
+  const docs = DATA.documents || { sections: [] };
+  const list = document.getElementById('docs-list');
+  if (!docs.sections || !docs.sections.length) { list.innerHTML = '<div class="empty-hint">No documents yet</div>'; return; }
+  list.innerHTML = docs.sections.map((sec) => `
+    <div class="sec-label">${esc(sec.name)}</div>
+    ${sec.files.length ? sec.files.map((f) => `
+      <div class="rec-card">
+        <div class="rec-lnk" style="border-bottom:none;padding-bottom:0">
+          <div class="rec-left"><i class="ti ${DOC_ICON[f.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
+            <span class="rec-txt" style="color:var(--text)">${esc(f.name)}</span></div>
+          <a href="${esc(f.url)}" target="_blank" rel="noopener" class="wa-btn" style="text-decoration:none"><i class="ti ti-external-link"></i>Open</a>
+        </div>
+      </div>`).join('') : '<div class="empty-hint">Empty</div>'}
+  `).join('');
+}
 
 // ─── RECEIPTS (editable — dropdowns mirror the Sheet's own validation) ──
 function renderReceipts() {
