@@ -453,6 +453,14 @@ function loadData() {
 function hardRefresh() {
   const btn = document.getElementById('refresh-btn');
   btn.classList.add('spin');
+  // location.reload() genuinely reloads the document — the only way to
+  // pick up new app code — so the current tab can't survive in memory.
+  // Stash it and restore after the reload instead.
+  const active = document.querySelector('.screen.active');
+  if (active) sessionStorage.setItem('lastScreen', JSON.stringify({
+    id: active.id.replace('screen-', ''),
+    title: document.getElementById('page-title').textContent,
+  }));
   setTimeout(() => location.reload(), 250);
 }
 
@@ -462,6 +470,17 @@ function switchScreen(id, title) {
   document.getElementById('screen-' + id).classList.add('active');
   document.getElementById('nav-' + id).classList.add('active');
   document.getElementById('page-title').textContent = title;
+}
+
+// Restore whichever tab was active before a hardRefresh() reload.
+function restoreLastScreen() {
+  const saved = sessionStorage.getItem('lastScreen');
+  if (!saved) return;
+  sessionStorage.removeItem('lastScreen');
+  try {
+    const { id, title } = JSON.parse(saved);
+    if (document.getElementById('screen-' + id)) switchScreen(id, title);
+  } catch (e) {}
 }
 
 // ─── FLIGHTS ─────────────────────────────────────────────────────
@@ -1103,7 +1122,7 @@ function calcCur() {
 // ─── INIT ────────────────────────────────────────────────────────
 calcCur();
 loadRates();
-loadData();
+loadData().then(restoreLastScreen);
 setInterval(() => { if (document.visibilityState === 'visible') loadData(); }, 45000);
 // FX rates move slowly — refresh roughly hourly rather than every 45s poll.
 setInterval(() => { if (document.visibilityState === 'visible') loadRates(); }, 60 * 60 * 1000);
