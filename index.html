@@ -1025,11 +1025,31 @@ function requestBoardingPassRun() {
 // the Drive ticket-inbox folder against the sheet and re-running is free.
 const TICKETCHECK_STATUS_LABEL = { idle: 'Idle', requested: 'Requested — waiting for watcher…', running: 'Running…', done: 'Done', error: 'Error' };
 
+// If the latest completed check found anything unusual, drop it into the
+// (device-local) Notes box automatically so it isn't missed. Guarded by
+// finishedAt so the same result doesn't get appended again on every
+// 45s poll while the mailbox still shows this same "done" run.
+function maybeAppendTicketCheckNote_(s) {
+  if (s.status !== 'done' || !s.finishedAt || !s.message) return;
+  const lastSeen = localStorage.getItem('ptm_ticket_notes_last_finished');
+  if (String(s.finishedAt) === lastSeen) return;
+  localStorage.setItem('ptm_ticket_notes_last_finished', String(s.finishedAt));
+  if (s.message === 'No issues found' || s.message === 'Tickets checked') return; // nothing unusual
+  const stamp = new Date(s.finishedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  const entry = `[Ticket check ${stamp}] ${s.message}`;
+  const existing = localStorage.getItem('ptm_ticket_notes') || '';
+  const updated = existing ? existing + '\n\n' + entry : entry;
+  localStorage.setItem('ptm_ticket_notes', updated);
+  const textarea = document.getElementById('ticket-notes');
+  if (textarea) textarea.value = updated;
+}
+
 function renderTicketCheckCard() {
   if (!DATA) return;
   const card = document.getElementById('ticketcheck-card');
   if (!card) return;
   const s = DATA.ticketCheck || { status: 'idle' };
+  maybeAppendTicketCheckNote_(s);
   const heartbeatAgo = timeAgo(s.heartbeat);
   const watcherOnline = !!(s.heartbeat && (Date.now() - s.heartbeat) < 5 * 60 * 1000);
   const busy = s.status === 'requested' || s.status === 'running';
