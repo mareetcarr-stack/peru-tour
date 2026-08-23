@@ -43,6 +43,7 @@ const SHEET_NAMES = {
   recs: 'RECOMMENDATIONS',
   receipts: 'RECEIPTS',
   sunat: 'SUNAT_TRIGGER',
+  boardingpass: 'BOARDINGPASS_TRIGGER',
 };
 
 // The "TripADeal" Drive folder (Daily Itineraries, Tour Leader Reports,
@@ -174,6 +175,7 @@ function getAllData_() {
     places: getRecs_(),
     receipts: getReceipts_(),
     sunat: getSunatStatus_(),
+    boardingPass: getBoardingPassStatus_(),
     documents: getDocuments_(),
     wise: getWiseInfo_(),
   };
@@ -550,6 +552,46 @@ function requestSunatRun_() {
   return getSunatStatus_();
 }
 
+// ─── Boarding pass generation trigger ─────────────────────────────────────
+// Same mailbox pattern as SUNAT above, but for boarding-pass-runner.js — a
+// watcher on the owner's Mac polls this tab, runs `./deploy.sh && node
+// boarding-pass-runner.js`, and writes the result back here. No credentials
+// pass through this sheet or this script; the watcher already has its own
+// Google OAuth token on disk.
+const BOARDINGPASS_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+
+function boardingPassSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAMES.boardingpass);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAMES.boardingpass);
+    sh.getRange(1, 1, 1, BOARDINGPASS_HEADERS_.length).setValues([BOARDINGPASS_HEADERS_]);
+    sh.getRange(2, 1).setValue('idle');
+  }
+  return sh;
+}
+
+function getBoardingPassStatus_() {
+  const sh = boardingPassSheet_();
+  const row = sh.getRange(2, 1, 1, BOARDINGPASS_HEADERS_.length).getValues()[0];
+  return {
+    status: String(row[0] || 'idle').trim() || 'idle',
+    requestedAt: epochMs_(row[1]),
+    startedAt: epochMs_(row[2]),
+    finishedAt: epochMs_(row[3]),
+    message: String(row[4] || ''),
+    heartbeat: epochMs_(row[5]),
+  };
+}
+
+function requestBoardingPassRun_() {
+  const sh = boardingPassSheet_();
+  sh.getRange(2, 1).setValue('requested');
+  sh.getRange(2, 2).setValue(new Date());
+  sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  return getBoardingPassStatus_();
+}
+
 // ─── WRITE ───────────────────────────────────────────────────────────────
 function handleWrite_(body) {
   switch (body.action) {
@@ -567,6 +609,7 @@ function handleWrite_(body) {
     case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
     case 'requestSunatRun': return requestSunatRun_();
+    case 'requestBoardingPassRun': return requestBoardingPassRun_();
     default: throw new Error('Unknown write action: ' + body.action);
   }
 }
