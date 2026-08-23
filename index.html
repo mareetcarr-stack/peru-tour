@@ -15,6 +15,12 @@
 <style>
 /* ─── RESET & BASE ─────────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* iOS Safari (incl. home-screen PWAs) has no Vibration API — there's no
+   real haptic buzz available to a web app here. This is the closest
+   substitute: an immediate, snappy visual "press" on every tappable
+   element, replacing the default grey flash disabled above. */
+.wa-btn,.nav-item,.tab,.ck,.chk-box,.tkt-hdr,.bday-btn,#refresh-btn{transition:transform .08s ease,opacity .08s ease}
+.wa-btn:active,.nav-item:active,.tab:active,.ck:active,.chk-box:active,.tkt-hdr:active,.bday-btn:active,#refresh-btn:active{transform:scale(.92);opacity:.7}
 :root{
   /* Back to a fully black page per feedback, but with a visible light
      border on every content surface (card/row/table) so it still reads as
