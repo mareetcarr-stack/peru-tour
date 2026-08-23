@@ -961,18 +961,6 @@ function confirmSunatSubmit() {
 // ─── WISE PAYMENT DETAILS ────────────────────────────────────────
 // Name/BSB/account live only in the Sheet's WISE tab and the QR image only
 // in Drive — neither ever touches this public source file.
-function copyToClipboard(text, btn) {
-  const done = () => {
-    const orig = btn.textContent;
-    btn.innerHTML = '<i class="ti ti-check"></i>Copied';
-    setTimeout(() => { btn.innerHTML = orig; }, 1200);
-  };
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text).then(done).catch(() => alert('Could not copy — long-press the value to copy it manually.'));
-  } else {
-    alert('Could not copy — long-press the value to copy it manually.');
-  }
-}
 function jsStrLit_(s) {
   return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
 }
@@ -991,7 +979,7 @@ function renderWise() {
           <div style="color:var(--text4);font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">${esc(label)}</div>
           <div style="color:var(--text);font-size:15px;font-weight:700;margin-top:3px">${esc(value)}</div>
         </div>`).join('')}
-      <div class="wa-btn" style="justify-content:center;width:100%;margin-top:14px" onclick="copyToClipboard('${jsStrLit_(combined)}', this)"><i class="ti ti-copy"></i>Copy all details</div>
+      <div class="wa-btn" style="justify-content:center;width:100%;margin-top:14px" onclick="waShare('${jsStrLit_(combined)}')"><i class="ti ti-brand-whatsapp"></i>Share to WhatsApp</div>
     </div>`;
   }
   if (w.qrDataUri) {
