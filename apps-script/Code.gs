@@ -372,17 +372,34 @@ function listFolderFiles_(folder) {
   return out;
 }
 
+// Curation for the loose (non-subfolder) files directly inside the
+// TripADeal folder: these two always come first, in this exact order,
+// ahead of every subfolder; this one is hidden from the app entirely.
+const TOP_DOC_ORDER_ = ['Recommendations for Peru', 'A 2 Briefing'];
+const EXCLUDED_DOC_NAMES_ = ['Andean Wings Sotupa Eco Lodge Menu Selection'];
+
 function getDocuments_() {
   const root = DriveApp.getFolderById(DOCS_FOLDER_ID);
   const sections = [];
+
+  const rootFiles = listFolderFiles_(root).filter((f) => EXCLUDED_DOC_NAMES_.indexOf(f.name) === -1);
+
+  const topFiles = TOP_DOC_ORDER_.map((name) => rootFiles.find((f) => f.name === name)).filter(Boolean);
+  if (topFiles.length) sections.push({ name: 'Key Documents', files: topFiles });
+
+  const subfolderSections = [];
   const subfolders = root.getFolders();
   while (subfolders.hasNext()) {
     const sub = subfolders.next();
-    sections.push({ name: sub.getName(), files: listFolderFiles_(sub) });
+    subfolderSections.push({ name: sub.getName(), files: listFolderFiles_(sub) });
   }
-  sections.sort((a, b) => a.name.localeCompare(b.name));
-  const rootFiles = listFolderFiles_(root);
-  if (rootFiles.length) sections.push({ name: 'Other documents', files: rootFiles });
+  subfolderSections.sort((a, b) => a.name.localeCompare(b.name));
+  sections.push.apply(sections, subfolderSections);
+
+  const handledNames = TOP_DOC_ORDER_.concat(EXCLUDED_DOC_NAMES_);
+  const otherRootFiles = rootFiles.filter((f) => handledNames.indexOf(f.name) === -1);
+  if (otherRootFiles.length) sections.push({ name: 'Other documents', files: otherRootFiles });
+
   return { folderName: root.getName(), sections: sections };
 }
 
