@@ -44,6 +44,7 @@ const SHEET_NAMES = {
   receipts: 'RECEIPTS',
   sunat: 'SUNAT_TRIGGER',
   boardingpass: 'BOARDINGPASS_TRIGGER',
+  ticketcheck: 'TICKETCHECK_TRIGGER',
 };
 
 // The "TripADeal" Drive folder (Daily Itineraries, Tour Leader Reports,
@@ -176,6 +177,7 @@ function getAllData_() {
     receipts: getReceipts_(),
     sunat: getSunatStatus_(),
     boardingPass: getBoardingPassStatus_(),
+    ticketCheck: getTicketCheckStatus_(),
     documents: getDocuments_(),
     wise: getWiseInfo_(),
   };
@@ -625,6 +627,45 @@ function requestBoardingPassRun_() {
   return getBoardingPassStatus_();
 }
 
+// ─── Ticket check trigger ──────────────────────────────────────────────
+// Same mailbox pattern again, for ticket-checker.js — it cross-checks the
+// TICKETS sheet against whatever PDFs are sitting in the Drive ticket-inbox
+// folder and writes the results straight back to that sheet. No files or
+// credentials pass through here.
+const TICKETCHECK_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+
+function ticketCheckSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAMES.ticketcheck);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAMES.ticketcheck);
+    sh.getRange(1, 1, 1, TICKETCHECK_HEADERS_.length).setValues([TICKETCHECK_HEADERS_]);
+    sh.getRange(2, 1).setValue('idle');
+  }
+  return sh;
+}
+
+function getTicketCheckStatus_() {
+  const sh = ticketCheckSheet_();
+  const row = sh.getRange(2, 1, 1, TICKETCHECK_HEADERS_.length).getValues()[0];
+  return {
+    status: String(row[0] || 'idle').trim() || 'idle',
+    requestedAt: epochMs_(row[1]),
+    startedAt: epochMs_(row[2]),
+    finishedAt: epochMs_(row[3]),
+    message: String(row[4] || ''),
+    heartbeat: epochMs_(row[5]),
+  };
+}
+
+function requestTicketCheckRun_() {
+  const sh = ticketCheckSheet_();
+  sh.getRange(2, 1).setValue('requested');
+  sh.getRange(2, 2).setValue(new Date());
+  sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  return getTicketCheckStatus_();
+}
+
 // ─── WRITE ───────────────────────────────────────────────────────────────
 function handleWrite_(body) {
   switch (body.action) {
@@ -643,6 +684,7 @@ function handleWrite_(body) {
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
     case 'requestSunatRun': return requestSunatRun_();
     case 'requestBoardingPassRun': return requestBoardingPassRun_();
+    case 'requestTicketCheckRun': return requestTicketCheckRun_();
     default: throw new Error('Unknown write action: ' + body.action);
   }
 }
