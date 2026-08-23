@@ -823,17 +823,23 @@ function renderDocuments() {
   const docs = DATA.documents || { sections: [] };
   const list = document.getElementById('docs-list');
   if (!docs.sections || !docs.sections.length) { list.innerHTML = '<div class="empty-hint">No documents yet</div>'; return; }
-  list.innerHTML = docs.sections.map((sec) => `
+  list.innerHTML = docs.sections.map((sec) => {
+    const isBoardingPasses = sec.name === 'Boarding Passes';
+    return `
     <div class="sec-label">${esc(sec.name)}</div>
     ${sec.files.length ? sec.files.map((f) => `
       <div class="rec-card">
         <div class="rec-lnk" style="border-bottom:none;padding-bottom:0">
           <div class="rec-left"><i class="ti ${DOC_ICON[f.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
             <span class="rec-txt" style="color:var(--text)">${esc(f.name)}</span></div>
-          <a href="${esc(f.url)}" target="_blank" rel="noopener" class="wa-btn" style="text-decoration:none"><i class="ti ti-external-link"></i>Open</a>
+          <div style="display:flex;gap:6px">
+            ${isBoardingPasses ? `<div class="wa-btn" onclick="waShare('${esc(f.url)}')"><i class="ti ti-brand-whatsapp"></i>Share</div>` : ''}
+            <a href="${esc(f.url)}" target="_blank" rel="noopener" class="wa-btn" style="text-decoration:none"><i class="ti ti-external-link"></i>Open</a>
+          </div>
         </div>
       </div>`).join('') : '<div class="empty-hint">Empty</div>'}
-  `).join('');
+  `;
+  }).join('');
 }
 
 // ─── RECEIPTS (editable — dropdowns mirror the Sheet's own validation) ──

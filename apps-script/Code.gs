@@ -391,9 +391,36 @@ const EXCLUDED_DOC_IDS_ = [
   '1Zilb4HarBOgqC2YBQubscLTH-0jdkfXXtfp8O7opTp4', // Andean Wings Sotupa Eco Lodge Menu Selection
 ];
 
+// The merged boarding-pass PDFs land here (written directly by
+// boarding-pass-runner.js on the owner's Mac, synced up via Google Drive
+// Desktop) — a different folder from the TripADeal one above, so it's
+// looked up by name rather than a hardcoded ID. The name is set by that
+// script, not something Yenrri or Maree would casually rename.
+// User confirmed: each pass is set to "Anyone with the link can view" so
+// the WhatsApp share button works for passengers without a Google login.
+function getBoardingPassDocs_() {
+  const it = DriveApp.getFoldersByName('LATAM Boarding Passes');
+  if (!it.hasNext()) return [];
+  const folder = it.next();
+  const files = listFolderFiles_(folder);
+  files.forEach((f) => {
+    try {
+      DriveApp.getFileById(f.id).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {
+      // sharing change failed (rare) — file still appears, just may not
+      // be openable by the recipient until this is retried.
+    }
+  });
+  files.sort((a, b) => b.updated - a.updated); // newest first
+  return files;
+}
+
 function getDocuments_() {
   const root = DriveApp.getFolderById(DOCS_FOLDER_ID);
   const sections = [];
+
+  const boardingPassFiles = getBoardingPassDocs_();
+  if (boardingPassFiles.length) sections.push({ name: 'Boarding Passes', files: boardingPassFiles });
 
   const rootFiles = listFolderFiles_(root).filter((f) => EXCLUDED_DOC_IDS_.indexOf(f.id) === -1);
 
