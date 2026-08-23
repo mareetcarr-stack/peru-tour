@@ -302,7 +302,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
       <!-- RECEIPTS -->
       <div id="tab-receipts" style="display:none">
-        <div class="sec-label">Receipts</div>
+        <div class="sec-label">Submit to SUNAT</div>
+        <div id="sunat-card" class="tot-block"></div>
+        <div class="sec-label" style="margin-top:16px">Receipts</div>
         <div id="receipts-list"><div class="empty-hint">Loading…</div></div>
       </div>
 
@@ -426,7 +428,7 @@ function loadData() {
   return apiGet({ action: 'data' }).then((res) => {
     if (!res.ok) throw new Error(res.error);
     DATA = res.data;
-    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts();
+    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts(); renderSunatCard();
   }).catch((err) => { console.error('loadData failed', err); });
 }
 
@@ -889,6 +891,80 @@ function addReceiptRow() {
       DATA.receipts.rows.push({ row: res.result.row, description: '', observation: '', paymentMethod: paymentMethod, currency: currency, amount: 0 });
       renderReceipts();
     });
+}
+
+// ─── SUNAT SUBMISSION — a "mailbox" row a watcher on the owner's Mac ────
+// polls; no SUNAT credentials ever pass through this app or Apps Script.
+// Real submission only happens after a cancelable countdown, so a mis-tap
+// can't fire off a real tax filing by accident.
+const SUNAT_STATUS_LABEL = { idle: 'Idle', requested: 'Requested — waiting for watcher…', running: 'Running…', done: 'Done', error: 'Error' };
+let sunatCountdownTimer = null;
+
+function timeAgo(ms) {
+  if (!ms) return null;
+  const diff = Date.now() - ms;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return Math.floor(diff / 60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff / 3600000) + 'h ago';
+  return Math.floor(diff / 86400000) + 'd ago';
+}
+
+function renderSunatCard() {
+  if (!DATA || sunatCountdownTimer) return; // don't clobber an active countdown
+  const card = document.getElementById('sunat-card');
+  if (!card) return;
+  const s = DATA.sunat || { status: 'idle' };
+  const n = ((DATA.receipts && DATA.receipts.rows) || []).length;
+  const heartbeatAgo = timeAgo(s.heartbeat);
+  const watcherOnline = !!(s.heartbeat && (Date.now() - s.heartbeat) < 5 * 60 * 1000);
+  const busy = s.status === 'requested' || s.status === 'running';
+  let statusLine = SUNAT_STATUS_LABEL[s.status] || s.status;
+  if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
+  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text2)';
+  card.innerHTML = `
+    <div class="tot-row"><div class="tot-lbl">Status</div><div style="color:${statusColor};font-size:11px;font-weight:600;text-align:right;max-width:70%">${esc(statusLine)}</div></div>
+    <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text4)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
+    <div style="margin-top:10px">
+      <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="startSunatCountdown()">
+        <i class="ti ti-send-2"></i>&nbsp;${busy ? 'In progress…' : `Submit ${n} receipt${n === 1 ? '' : 's'} to SUNAT`}
+      </div>
+    </div>`;
+}
+
+function startSunatCountdown() {
+  if (sunatCountdownTimer) return;
+  const n = ((DATA.receipts && DATA.receipts.rows) || []).length;
+  if (!n) { alert('No receipts to submit yet.'); return; }
+  let secondsLeft = 10;
+  const card = document.getElementById('sunat-card');
+  const paint = () => {
+    card.innerHTML = `
+      <div class="tot-row"><div class="tot-lbl">Submitting ${n} real receipt${n === 1 ? '' : 's'} to SUNAT in ${secondsLeft}s…</div></div>
+      <div class="wa-btn" style="justify-content:center;width:100%;background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)" onclick="cancelSunatCountdown()"><i class="ti ti-x"></i>&nbsp;Cancel</div>`;
+  };
+  paint();
+  sunatCountdownTimer = setInterval(() => {
+    secondsLeft -= 1;
+    if (secondsLeft <= 0) {
+      clearInterval(sunatCountdownTimer);
+      sunatCountdownTimer = null;
+      confirmSunatSubmit();
+      return;
+    }
+    paint();
+  }, 1000);
+}
+
+function cancelSunatCountdown() {
+  if (sunatCountdownTimer) { clearInterval(sunatCountdownTimer); sunatCountdownTimer = null; }
+  renderSunatCard();
+}
+
+function confirmSunatSubmit() {
+  write({ action: 'requestSunatRun' }).then((res) => {
+    DATA.sunat = res.result;
+    renderSunatCard();
+  });
 }
 
 

@@ -42,6 +42,7 @@ const SHEET_NAMES = {
   flights: 'FLIGHT STATUS',
   recs: 'RECOMMENDATIONS',
   receipts: 'RECEIPTS',
+  sunat: 'SUNAT_TRIGGER',
 };
 
 // ─── ENTRY POINTS ────────────────────────────────────────────────────────
@@ -109,6 +110,16 @@ function cellStr_(v) {
   return v == null ? '' : v;
 }
 
+// For timestamps that need minute/second precision (SUNAT watcher
+// heartbeat/status) rather than cellStr_'s date-only display format.
+// Returns epoch milliseconds, or null if the cell has nothing usable.
+function epochMs_(v) {
+  if (v instanceof Date) return v.getTime();
+  if (!v) return null;
+  const t = Date.parse(String(v));
+  return isNaN(t) ? null : t;
+}
+
 // Same idea, but formatted for an HTML <input type="date"> (needs yyyy-MM-dd).
 // Used only for the Birthday column, which round-trips through that input.
 function isoDate_(v) {
@@ -148,6 +159,7 @@ function getAllData_() {
     info: getInfo_(),
     places: getRecs_(),
     receipts: getReceipts_(),
+    sunat: getSunatStatus_(),
   };
 }
 
@@ -349,6 +361,51 @@ function getReceipts_() {
   };
 }
 
+// ─── SUNAT submission trigger ─────────────────────────────────────────────
+// This tab is a simple mailbox between the app and a watcher script running
+// on the owner's own Mac (never anything in this Apps Script or the app
+// itself talks to SUNAT directly, and no SUNAT credentials ever pass through
+// here). Row 2 holds the current state:
+//   A: Status  ('idle' | 'requested' | 'running' | 'done' | 'error')
+//   B: RequestedAt   C: StartedAt   D: FinishedAt
+//   E: Message (result summary or error text)
+//   F: WatcherHeartbeat (written by the watcher on every poll, so the app
+//      can tell whether anything is actually listening)
+const SUNAT_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+
+function sunatSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAMES.sunat);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAMES.sunat);
+    sh.getRange(1, 1, 1, SUNAT_HEADERS_.length).setValues([SUNAT_HEADERS_]);
+    sh.getRange(2, 1).setValue('idle');
+  }
+  return sh;
+}
+
+function getSunatStatus_() {
+  const sh = sunatSheet_();
+  const row = sh.getRange(2, 1, 1, SUNAT_HEADERS_.length).getValues()[0];
+  return {
+    status: String(row[0] || 'idle').trim() || 'idle',
+    requestedAt: epochMs_(row[1]),
+    startedAt: epochMs_(row[2]),
+    finishedAt: epochMs_(row[3]),
+    message: String(row[4] || ''),
+    heartbeat: epochMs_(row[5]),
+  };
+}
+
+function requestSunatRun_() {
+  const sh = sunatSheet_();
+  // B2=RequestedAt, C2=StartedAt, D2=FinishedAt, E2=Message
+  sh.getRange(2, 1).setValue('requested');
+  sh.getRange(2, 2).setValue(new Date());
+  sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  return getSunatStatus_();
+}
+
 // ─── WRITE ───────────────────────────────────────────────────────────────
 function handleWrite_(body) {
   switch (body.action) {
@@ -365,6 +422,7 @@ function handleWrite_(body) {
     case 'setDiet': return setDiet_(body.id, body.value);
     case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
+    case 'requestSunatRun': return requestSunatRun_();
     default: throw new Error('Unknown write action: ' + body.action);
   }
 }
