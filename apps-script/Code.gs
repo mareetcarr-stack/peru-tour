@@ -362,6 +362,7 @@ function listFolderFiles_(folder) {
     const f = it.next();
     if (f.getId() === tripSheetId) continue; // the trip Sheet lives in this folder too — already in the app
     out.push({
+      id: f.getId(),
       name: f.getName(),
       url: f.getUrl(),
       type: docType_(f.getMimeType()),
@@ -375,16 +376,24 @@ function listFolderFiles_(folder) {
 // Curation for the loose (non-subfolder) files directly inside the
 // TripADeal folder: these two always come first, in this exact order,
 // ahead of every subfolder; this one is hidden from the app entirely.
-const TOP_DOC_ORDER_ = ['Recommendations for Peru', 'A 2 Briefing'];
-const EXCLUDED_DOC_NAMES_ = ['Andean Wings Sotupa Eco Lodge Menu Selection'];
+// Matched by Drive file ID (permanent) rather than name — names get
+// renamed/retyped (this already happened once: "A 2 Briefing" -> "Briefing"),
+// but the underlying file ID never changes.
+const TOP_DOC_ORDER_ = [
+  '1TGaOAj1h3jJU-jxa5s4wjnbfXB9hzbDp9jZ9B6Mhe-s', // Recommendations for Peru
+  '196wurKBKoG-i6UG6x--fhxqIBBoKxkcuVHNu_GHH4d4', // Briefing (was "A 2 Briefing")
+];
+const EXCLUDED_DOC_IDS_ = [
+  '1Zilb4HarBOgqC2YBQubscLTH-0jdkfXXtfp8O7opTp4', // Andean Wings Sotupa Eco Lodge Menu Selection
+];
 
 function getDocuments_() {
   const root = DriveApp.getFolderById(DOCS_FOLDER_ID);
   const sections = [];
 
-  const rootFiles = listFolderFiles_(root).filter((f) => EXCLUDED_DOC_NAMES_.indexOf(f.name) === -1);
+  const rootFiles = listFolderFiles_(root).filter((f) => EXCLUDED_DOC_IDS_.indexOf(f.id) === -1);
 
-  const topFiles = TOP_DOC_ORDER_.map((name) => rootFiles.find((f) => f.name === name)).filter(Boolean);
+  const topFiles = TOP_DOC_ORDER_.map((id) => rootFiles.find((f) => f.id === id)).filter(Boolean);
   if (topFiles.length) sections.push({ name: 'Key Documents', files: topFiles });
 
   const subfolderSections = [];
@@ -396,8 +405,7 @@ function getDocuments_() {
   subfolderSections.sort((a, b) => a.name.localeCompare(b.name));
   sections.push.apply(sections, subfolderSections);
 
-  const handledNames = TOP_DOC_ORDER_.concat(EXCLUDED_DOC_NAMES_);
-  const otherRootFiles = rootFiles.filter((f) => handledNames.indexOf(f.name) === -1);
+  const otherRootFiles = rootFiles.filter((f) => TOP_DOC_ORDER_.indexOf(f.id) === -1);
   if (otherRootFiles.length) sections.push({ name: 'Other documents', files: otherRootFiles });
 
   return { folderName: root.getName(), sections: sections };
