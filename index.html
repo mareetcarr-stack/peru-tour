@@ -137,15 +137,9 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .price-edit::-webkit-outer-spin-button,.price-edit::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .ck{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;vertical-align:middle;background:transparent}
 .ck.y{background:var(--green-bg);border-color:var(--green)}.ck.y::after{content:'✓';color:var(--green);font-size:9px}
-.cc{display:inline-flex;flex-direction:row;align-items:center;justify-content:center;gap:4px;width:100%}
-.cc-lbl{font-size:9px;font-weight:700;padding:2px 6px;border-radius:4px;cursor:pointer;user-select:none;border:1px solid var(--amber-border);background:var(--bg3);color:var(--amber);white-space:nowrap}
-.cc-lbl.usd{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
-.cc-lbl.pen{background:var(--amber-bg);border-color:var(--amber-border);color:var(--amber)}
-.cc-inp{width:40px;font-size:9px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:3px;color:var(--dark-text);padding:2px;text-align:center;outline:none;font-family:inherit;-moz-appearance:textfield;flex-shrink:0}
-.cc-inp::-webkit-outer-spin-button,.cc-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
+.ck.amber.y{background:var(--amber-bg);border-color:var(--amber)}.ck.amber.y::after{color:var(--amber)}
 .row-total{font-size:10px;color:var(--text2);line-height:1.5;white-space:nowrap}
 .row-total b{color:var(--amber)}
-.row-total b.pen{color:var(--amber)}
 
 /* totals */
 .tot-block{background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--border)}
@@ -154,14 +148,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .tot-row:last-child{border-bottom:none}
 .tot-lbl{color:var(--text);font-size:11px}
 .tot-usd{color:var(--amber);font-size:12px;font-weight:700}
-.tot-pen{color:var(--amber);font-size:12px;font-weight:700}
 .grand-block{background:var(--bg2);border-radius:12px;padding:12px 14px;border:1px solid var(--border2);margin-bottom:8px}
 .grand-title{color:var(--text2);font-size:11px;font-weight:600;margin-bottom:8px}
 .grand-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)}
 .grand-row:last-child{border-bottom:none}
 .grand-lbl{font-size:12px;font-weight:700}
 .grand-lbl.usd{color:var(--amber)}
-.grand-lbl.pen{color:var(--amber)}
 .grand-val{font-size:13px;font-weight:700;color:var(--text)}
 
 /* tickets */
@@ -265,7 +257,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
       <!-- OPTIONAL TOURS -->
       <div id="tab-tours">
-        <div class="hint">T = TripADeal (already prepaid, just a tick) · V = tap to cycle —/USD/PEN, PEN needs an amount · prices are editable</div>
+        <div class="hint">T = TripADeal (already prepaid) · V = booked with Valencia (paid in USD) · both just a tick · prices are editable</div>
         <div class="tour-wrap">
         <table class="ttbl">
           <colgroup id="tour-colgroup"></colgroup>
@@ -574,11 +566,9 @@ function toggleChecklistItem(row, box, dayIndex, dayTotal) {
 }
 
 // ─── OPTIONAL TOURS ──────────────────────────────────────────────
-// V (and Tips) cycle through '' → USD → PEN. USD uses the tour's listed
-// price automatically; PEN needs a manual amount. T is just a plain tick
-// (TripADeal tours are already prepaid) and does not feed the totals.
-const CC_CYCLE = ['', 'USD', 'PEN'];
-
+// V and Tips are now plain checkboxes, same as T — no currency choice.
+// Checking either one always means "paid in USD at the listed price";
+// there's no manual amount entry and no Soles option anymore.
 function renderTours() {
   if (!DATA) return;
   const tours = DATA.tours;
@@ -589,8 +579,8 @@ function renderTours() {
 
   colgroup.innerHTML = `<col style="width:112px">` +
     `<col style="width:64px"><col style="width:44px">` +
-    `<col style="width:78px">` +
-    defs.map(() => `<col style="width:34px"><col style="width:78px">`).join('');
+    `<col style="width:56px">` +
+    defs.map(() => `<col style="width:34px"><col style="width:34px">`).join('');
 
   thead.innerHTML = `<tr>
       <th class="lft" rowspan="2">Passenger</th>
@@ -609,10 +599,10 @@ function renderTours() {
       <td class="nm">${esc(r.id)}. ${esc(r.name)}</td>
       <td class="tsep">${rowTotalHtml_(r, tours)}</td>
       <td><div class="ck${r.paid ? ' y' : ''}" onclick="togglePaid('${r.id}', this)"></div></td>
-      <td>${ccWidget_('tip', r.id, -1, r.tip)}</td>
+      <td><div class="ck amber${r.tip.currency ? ' y' : ''}" onclick="toggleTip('${r.id}', this)"></div></td>
       ${r.tours.map((t, ti) => `
         <td class="tsep"><div class="ck${t.t ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, this)"></div></td>
-        <td>${ccWidget_('tour', r.id, ti, t.v)}</td>
+        <td><div class="ck amber${t.v.currency ? ' y' : ''}" onclick="toggleValencia('${r.id}', ${ti}, this)"></div></td>
       `).join('')}
     </tr>`).join('') + `
     <tr class="cnt-row">
@@ -628,58 +618,32 @@ function renderTours() {
   renderTourTotals();
 }
 
-function ccWidget_(kind, id, tourIndex, cc) {
-  const cur = cc.currency || '';
-  const cls = cur === 'USD' ? 'usd' : cur === 'PEN' ? 'pen' : '';
-  const label = cur || '—';
-  const cycleFn = `cycleCC('${kind}','${id}',${tourIndex})`;
-  let html = `<div class="cc"><div class="cc-lbl ${cls}" onclick="${cycleFn}">${esc(label)}</div>`;
-  if (cur === 'PEN') {
-    html += `<input class="cc-inp" type="number" placeholder="0" value="${cc.amount || ''}" onclick="event.stopPropagation()" onchange="setCCAmount('${kind}','${id}',${tourIndex}, this.value)">`;
-  }
-  html += `</div>`;
-  return html;
-}
-
 function findTourRow_(id) { return DATA.tours.rows.find(r => r.id === id); }
-function ccFor_(kind, row, tourIndex) { return kind === 'tip' ? row.tip : row.tours[tourIndex].v; }
 
-function cycleCC(kind, id, tourIndex) {
+function toggleTip(id, el) {
   const row = findTourRow_(id); if (!row) return;
-  const cc = ccFor_(kind, row, tourIndex);
-  const next = CC_CYCLE[(CC_CYCLE.indexOf(cc.currency) + 1) % CC_CYCLE.length];
-  cc.currency = next; cc.amount = 0;
+  const on = !row.tip.currency;
+  row.tip.currency = on ? 'USD' : '';
+  row.tip.amount = 0;
   renderTours();
-  if (kind === 'tip') write({ action: 'setTip', id: id, currency: next, amount: 0 });
-  else write({ action: 'setTourValencia', id: id, tourIndex: tourIndex, currency: next, amount: 0 });
+  write({ action: 'setTip', id: id, currency: row.tip.currency, amount: 0 });
 }
-function setCCAmount(kind, id, tourIndex, val) {
+function toggleValencia(id, tourIndex, el) {
   const row = findTourRow_(id); if (!row) return;
-  const cc = ccFor_(kind, row, tourIndex);
-  cc.amount = parseFloat(val) || 0;
-  renderTourTotals();
-  updateRowTotalCell_(id);
-  if (kind === 'tip') write({ action: 'setTip', id: id, currency: cc.currency, amount: cc.amount });
-  else write({ action: 'setTourValencia', id: id, tourIndex: tourIndex, currency: cc.currency, amount: cc.amount });
-}
-function updateRowTotalCell_(id) {
-  // amount inputs re-render on 'change', not every keystroke, so a full
-  // renderTours() is fine here — cheap for ~16 passenger rows.
+  const v = row.tours[tourIndex].v;
+  const on = !v.currency;
+  v.currency = on ? 'USD' : '';
+  v.amount = 0;
   renderTours();
+  write({ action: 'setTourValencia', id: id, tourIndex: tourIndex, currency: v.currency, amount: 0 });
 }
 
 function rowTotalHtml_(r, tours) {
   // Tips are tracked separately in their own column and deliberately left
   // out of this Total — it's meant to be the tour-purchases total only.
-  let usd = 0, pen = 0;
-  r.tours.forEach((t, ti) => {
-    if (t.v.currency === 'USD') usd += tours.tourDefs[ti].price;
-    else if (t.v.currency === 'PEN') pen += t.v.amount;
-  });
-  const parts = [];
-  if (usd) parts.push(`<b>$${usd.toFixed(0)}</b>`);
-  if (pen) parts.push(`<b class="pen">S/${pen.toFixed(0)}</b>`);
-  return `<div class="row-total">${parts.join(' + ') || '—'}</div>`;
+  let usd = 0;
+  r.tours.forEach((t, ti) => { if (t.v.currency) usd += tours.tourDefs[ti].price; });
+  return `<div class="row-total">${usd ? `<b>$${usd.toFixed(0)}</b>` : '—'}</div>`;
 }
 
 function toggleTourTick(id, tourIndex, el) {
@@ -716,34 +680,23 @@ function renderTourTotals() {
   const mkRow = (lbl, val, cls) => `<div class="tot-row"><div class="tot-lbl">${esc(lbl)}</div><div class="${cls}">${esc(val)}</div></div>`;
 
   let html = '';
-  const tipUsdN = rows.filter(r => r.tip.currency === 'USD').length;
-  const tipPen = rows.filter(r => r.tip.currency === 'PEN').reduce((s, r) => s + r.tip.amount, 0);
-  let tipRows = '';
-  if (tipUsdN) tipRows += mkRow(tipUsdN + ' pax × $' + tours.tipPrice, '$' + (tipUsdN * tours.tipPrice).toFixed(2), 'tot-usd');
-  if (tipPen) tipRows += mkRow('Collected in PEN', 'S/' + tipPen.toFixed(2), 'tot-pen');
-  html += mkBlock('Tips', tipRows || mkRow('No tips recorded yet', '', 'tot-lbl'));
+  const tipUsdN = rows.filter(r => r.tip.currency).length;
+  html += mkBlock('Tips', tipUsdN
+    ? mkRow(tipUsdN + ' pax × $' + tours.tipPrice, '$' + (tipUsdN * tours.tipPrice).toFixed(2), 'tot-usd')
+    : mkRow('No tips recorded yet', '', 'tot-lbl'));
 
   // Tips are broken out in their own block above and deliberately excluded
   // from the grand total — this is meant to be the tour-purchases total only.
   let grandUsd = 0;
-  let grandPen = 0;
   defs.forEach((d, ti) => {
-    const usdN = rows.filter(r => r.tours[ti].v.currency === 'USD').length;
-    const pen = rows.filter(r => r.tours[ti].v.currency === 'PEN').reduce((s, r) => s + r.tours[ti].v.amount, 0);
-    if (!usdN && !pen) return;
+    const usdN = rows.filter(r => r.tours[ti].v.currency).length;
+    if (!usdN) return;
     grandUsd += usdN * d.price;
-    grandPen += pen;
-    let rowsHtml = '';
-    if (usdN) rowsHtml += mkRow(usdN + ' pax × $' + d.price, '$' + (usdN * d.price).toFixed(2), 'tot-usd');
-    if (pen) rowsHtml += mkRow('Collected in PEN', 'S/' + pen.toFixed(2), 'tot-pen');
-    html += mkBlock(d.name, rowsHtml);
+    html += mkBlock(d.name, mkRow(usdN + ' pax × $' + d.price, '$' + (usdN * d.price).toFixed(2), 'tot-usd'));
   });
 
-  const usdAsPen = grandUsd * R.usdPen;
-  const penAsUsd = grandPen * R.penUsd;
   html += `<div class="grand-block"><div class="grand-title">Grand totals</div>
-    <div class="grand-row"><div class="grand-lbl usd">USD</div><div class="grand-val">$${grandUsd.toFixed(2)}${grandUsd ? ` <span style="color:var(--text4);font-weight:400">(S/${usdAsPen.toFixed(2)})</span>` : ''}</div></div>
-    <div class="grand-row"><div class="grand-lbl pen">PEN</div><div class="grand-val">S/${grandPen.toFixed(2)}${grandPen ? ` <span style="color:var(--text4);font-weight:400">($${penAsUsd.toFixed(2)})</span>` : ''}</div></div></div>`;
+    <div class="grand-row"><div class="grand-lbl usd">USD</div><div class="grand-val">$${grandUsd.toFixed(2)}</div></div></div>`;
   area.innerHTML = html;
 }
 
