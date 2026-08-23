@@ -571,7 +571,9 @@ function renderPassengers() {
       <div style="flex:1"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
       ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
       <span class="pill ${pillClass}" style="margin-left:${p.checkinLink ? '6px' : 'auto'}">${esc(pillTxt)}</span>
-      ${!isYenrri ? `<div class="wa-btn" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);margin-left:6px" title="Mark as cancelled" onclick="toggleCancelled('${p.id}', false)"><i class="ti ti-user-x"></i></div>` : ''}
+      ${!isYenrri
+        ? `<div class="wa-btn" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);margin-left:6px" title="Mark as cancelled" onclick="toggleCancelled('${p.id}', false)"><i class="ti ti-user-x"></i></div>`
+        : `<div class="wa-btn" style="visibility:hidden;margin-left:6px"><i class="ti ti-user-x"></i></div>`}
     </div>`;
   }).join('');
 }
@@ -1227,6 +1229,12 @@ function calcCur() {
 }
 
 // ─── INIT ────────────────────────────────────────────────────────
+// iOS Safari silently refuses to apply :active styles to plain elements
+// (divs, spans — anything without native button/link behaviour) unless
+// there's at least one touch listener registered somewhere on the page.
+// This no-op listener is the standard fix — it's what actually makes the
+// tap "press" CSS effect work at all on iPhone/iPad.
+document.addEventListener('touchstart', function () {}, { passive: true });
 calcCur();
 loadRates();
 restoreLastScreen(); // do this before loadData() starts — it's a network
