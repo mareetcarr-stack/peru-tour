@@ -1122,7 +1122,10 @@ function calcCur() {
 // ─── INIT ────────────────────────────────────────────────────────
 calcCur();
 loadRates();
-loadData().then(restoreLastScreen);
+restoreLastScreen(); // do this before loadData() starts — it's a network
+                      // fetch, and waiting for it first means Flights (the
+                      // default markup) paints, then jumps to the saved tab
+loadData();
 setInterval(() => { if (document.visibilityState === 'visible') loadData(); }, 45000);
 // FX rates move slowly — refresh roughly hourly rather than every 45s poll.
 setInterval(() => { if (document.visibilityState === 'visible') loadRates(); }, 60 * 60 * 1000);
