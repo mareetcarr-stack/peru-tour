@@ -629,7 +629,11 @@ function requestSunatRun_() {
 // boarding-pass-runner.js`, and writes the result back here. No credentials
 // pass through this sheet or this script; the watcher already has its own
 // Google OAuth token on disk.
-const BOARDINGPASS_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+// Column G (Progress) is written mid-run by the watcher as it streams the
+// runner's output — "current/total" passengers processed so far — so the
+// app can show a progress bar/ETA instead of just "Running…" for however
+// long a full run takes.
+const BOARDINGPASS_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat', 'Progress'];
 
 function boardingPassSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -638,6 +642,11 @@ function boardingPassSheet_() {
     sh = ss.insertSheet(SHEET_NAMES.boardingpass);
     sh.getRange(1, 1, 1, BOARDINGPASS_HEADERS_.length).setValues([BOARDINGPASS_HEADERS_]);
     sh.getRange(2, 1).setValue('idle');
+  } else if (sh.getLastColumn() < BOARDINGPASS_HEADERS_.length) {
+    // Tab already existed from before the Progress column was added —
+    // "create if missing" alone never backfills new columns onto an
+    // existing sheet, so do that explicitly here.
+    sh.getRange(1, 1, 1, BOARDINGPASS_HEADERS_.length).setValues([BOARDINGPASS_HEADERS_]);
   }
   return sh;
 }
@@ -652,6 +661,7 @@ function getBoardingPassStatus_() {
     finishedAt: epochMs_(row[3]),
     message: String(row[4] || ''),
     heartbeat: epochMs_(row[5]),
+    progress: String(row[6] || ''),
   };
 }
 
@@ -660,6 +670,7 @@ function requestBoardingPassRun_() {
   sh.getRange(2, 1).setValue('requested');
   sh.getRange(2, 2).setValue(new Date());
   sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  sh.getRange(2, 7).setValue(''); // clear Progress from any previous run
   return getBoardingPassStatus_();
 }
 

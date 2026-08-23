@@ -153,6 +153,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
 /* totals */
 .tot-block{background:var(--bg2);border-radius:12px;padding:12px 14px;margin-bottom:8px;border:1px solid var(--border)}
+.prog-track{background:var(--bg3);border-radius:6px;height:6px;overflow:hidden;margin:6px 0 2px}
+.prog-fill{background:var(--green);height:100%;transition:width .5s ease}
 .tot-title{color:var(--text3);font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;margin-bottom:8px}
 .tot-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:1px solid var(--border)}
 .tot-row:last-child{border-bottom:none}
@@ -1063,9 +1065,33 @@ function renderBoardingPassCard() {
   let statusLine = BOARDINGPASS_STATUS_LABEL[s.status] || s.status;
   if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
   const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text2)';
+
+  // A full run can take several minutes — without this, "Running…" gives
+  // no sign of whether it's actually moving. boarding-pass-runner.js's
+  // output is streamed by the watcher into a "current/total" Progress
+  // cell as each passenger is processed; the ETA is a simple linear
+  // extrapolation from elapsed time so far, not exact, but close enough
+  // to reassure Yenrri it isn't hanging.
+  let progressHtml = '';
+  const m = /^(\d+)\/(\d+)$/.exec(s.progress || '');
+  if (s.status === 'running' && m) {
+    const cur = parseInt(m[1], 10), total = parseInt(m[2], 10);
+    const pct = total > 0 ? Math.min(100, Math.round((cur / total) * 100)) : 0;
+    let etaText = '';
+    if (cur > 0 && cur < total && s.startedAt) {
+      const perUnitMs = (Date.now() - s.startedAt) / cur;
+      const remainingMin = Math.max(1, Math.round((perUnitMs * (total - cur)) / 60000));
+      etaText = ` · ~${remainingMin} min left`;
+    }
+    progressHtml = `
+      <div class="tot-row"><div class="tot-lbl">Progress</div><div style="font-size:11px;color:var(--text2)">${cur}/${total} passengers${etaText}</div></div>
+      <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>`;
+  }
+
   card.innerHTML = `
     <div class="tot-row"><div class="tot-lbl">Status</div><div style="color:${statusColor};font-size:11px;font-weight:600;text-align:right;max-width:70%">${esc(statusLine)}</div></div>
     <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text4)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
+    ${progressHtml}
     <div style="margin-top:10px">
       <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="requestBoardingPassRun()">
         <i class="ti ti-ticket"></i>&nbsp;${busy ? 'In progress…' : 'Generate Boarding Passes'}
@@ -1244,6 +1270,17 @@ loadData();
 setInterval(() => { if (document.visibilityState === 'visible') loadData(); }, 45000);
 // FX rates move slowly — refresh roughly hourly rather than every 45s poll.
 setInterval(() => { if (document.visibilityState === 'visible') loadRates(); }, 60 * 60 * 1000);
+
+// While any of the SUNAT/boarding-pass/ticket-check "mailbox" automations
+// is actively running, poll more often (10s) so progress bars and status
+// text actually feel live instead of updating once every 45s — a full
+// boarding-pass run especially can take several minutes, and 45s gaps
+// made it look stalled even when it wasn't.
+setInterval(() => {
+  if (document.visibilityState !== 'visible' || !DATA) return;
+  const busy = (obj) => obj && (obj.status === 'requested' || obj.status === 'running');
+  if (busy(DATA.sunat) || busy(DATA.boardingPass) || busy(DATA.ticketCheck)) loadData();
+}, 10000);
 </script>
 </body>
 </html>
