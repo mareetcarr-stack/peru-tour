@@ -175,6 +175,7 @@ function getAllData_() {
     receipts: getReceipts_(),
     sunat: getSunatStatus_(),
     documents: getDocuments_(),
+    wise: getWiseInfo_(),
   };
 }
 
@@ -409,6 +410,60 @@ function getDocuments_() {
   if (otherRootFiles.length) sections.push({ name: 'Other documents', files: otherRootFiles });
 
   return { folderName: root.getName(), sections: sections };
+}
+
+// ─── WISE PAYMENT DETAILS ──────────────────────────────────────────────────
+// Deliberately NOT hardcoded here — this file is public (GitHub). The actual
+// name/BSB/account number live only in a "WISE" tab in the private Sheet;
+// this just auto-creates that tab (with blank values) the first time it's
+// needed so there's somewhere to type them in.
+function getWiseSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName('WISE');
+  if (!sh) {
+    sh = ss.insertSheet('WISE');
+    sh.getRange(1, 1, 4, 2).setValues([
+      ['Field', 'Value'],
+      ['Name', ''],
+      ['BSB Code', ''],
+      ['Account Number', ''],
+    ]);
+  }
+  return sh;
+}
+
+// The QR image itself also never touches git — it's found by name in the
+// same TripADeal Drive folder the Docs tab already reads, and its bytes are
+// embedded directly as a data URI in the JSON response (more reliable than
+// linking to a Drive URL, which needs specific sharing/CORS to render inline).
+function findWiseQrImage_() {
+  try {
+    const folder = DriveApp.getFolderById(DOCS_FOLDER_ID);
+    const it = folder.getFiles();
+    while (it.hasNext()) {
+      const f = it.next();
+      if (/^image\//.test(f.getMimeType()) && /wise/i.test(f.getName())) {
+        const blob = f.getBlob();
+        return 'data:' + f.getMimeType() + ';base64,' + Utilities.base64Encode(blob.getBytes());
+      }
+    }
+  } catch (e) {
+    // no access / folder missing — just show the text fields without a QR
+  }
+  return '';
+}
+
+function getWiseInfo_() {
+  const sh = getWiseSheet_();
+  const rows = sh.getDataRange().getValues();
+  const map = {};
+  for (let r = 1; r < rows.length; r++) map[String(rows[r][0]).trim()] = String(rows[r][1] || '').trim();
+  return {
+    name: map['Name'] || '',
+    bsb: map['BSB Code'] || '',
+    account: map['Account Number'] || '',
+    qrDataUri: findWiseQrImage_(),
+  };
 }
 
 // Reads the actual dropdown list off an existing validated cell, so the

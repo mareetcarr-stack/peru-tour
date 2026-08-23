@@ -253,6 +253,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
         <div class="tab" onclick="switchTab('tickets',this)">Tickets</div>
         <div class="tab" onclick="switchTab('info',this)">Info &amp; diet</div>
         <div class="tab" onclick="switchTab('receipts',this)">Receipts</div>
+        <div class="tab" onclick="switchTab('wise',this)">Wise</div>
       </div>
 
       <!-- OPTIONAL TOURS -->
@@ -302,6 +303,12 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
         <div id="receipts-list"><div class="empty-hint">Loading…</div></div>
         <div class="sec-label" style="margin-top:16px">Submit to SUNAT</div>
         <div id="sunat-card" class="tot-block"></div>
+      </div>
+
+      <!-- WISE -->
+      <div id="tab-wise" style="display:none">
+        <div class="sec-label">Wise payment details</div>
+        <div id="wise-list"><div class="empty-hint">Loading…</div></div>
       </div>
 
     </div>
@@ -431,7 +438,7 @@ function loadData() {
   return apiGet({ action: 'data' }).then((res) => {
     if (!res.ok) throw new Error(res.error);
     DATA = res.data;
-    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts(); renderSunatCard(); renderDocuments();
+    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts(); renderSunatCard(); renderDocuments(); renderWise();
   }).catch((err) => { console.error('loadData failed', err); });
 }
 
@@ -951,10 +958,43 @@ function confirmSunatSubmit() {
   });
 }
 
+// ─── WISE PAYMENT DETAILS ────────────────────────────────────────
+// Name/BSB/account live only in the Sheet's WISE tab and the QR image only
+// in Drive — neither ever touches this public source file.
+function copyToClipboard(text, btn) {
+  const done = () => {
+    const orig = btn.textContent;
+    btn.innerHTML = '<i class="ti ti-check"></i>Copied';
+    setTimeout(() => { btn.innerHTML = orig; }, 1200);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text).then(done).catch(() => alert('Could not copy — long-press the value to copy it manually.'));
+  } else {
+    alert('Could not copy — long-press the value to copy it manually.');
+  }
+}
+function renderWise() {
+  if (!DATA) return;
+  const list = document.getElementById('wise-list');
+  const w = DATA.wise || {};
+  const field = (label, value) => !value ? '' : `
+    <div class="info-row">
+      <div style="color:var(--text4);font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">${esc(label)}</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;gap:8px">
+        <span style="color:var(--text);font-size:15px;font-weight:700">${esc(value)}</span>
+        <div class="wa-btn" onclick="copyToClipboard('${esc(value).replace(/'/g, "\\'")}', this)"><i class="ti ti-copy"></i>Copy</div>
+      </div>
+    </div>`;
+  let html = field('Name', w.name) + field('BSB Code', w.bsb) + field('Account Number', w.account);
+  if (w.qrDataUri) {
+    html += `<div class="info-row" style="text-align:center"><img src="${w.qrDataUri}" alt="Wise QR code" style="width:200px;height:200px;border-radius:12px;margin-top:2px"></div>`;
+  }
+  list.innerHTML = html || '<div class="empty-hint">Add your Name / BSB Code / Account Number to the WISE tab in the Sheet to show them here</div>';
+}
 
 // ─── SUB-TABS (Tours screen) ─────────────────────────────────────
 function switchTab(view, el) {
-  ['tours', 'tickets', 'info', 'receipts'].forEach(v => {
+  ['tours', 'tickets', 'info', 'receipts', 'wise'].forEach(v => {
     const e = document.getElementById('tab-' + v);
     if (e) e.style.display = v === view ? 'block' : 'none';
   });
