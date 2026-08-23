@@ -362,6 +362,7 @@ function listFolderFiles_(folder) {
   while (it.hasNext()) {
     const f = it.next();
     if (f.getId() === tripSheetId) continue; // the trip Sheet lives in this folder too — already in the app
+    if (/^image\//.test(f.getMimeType())) continue; // e.g. the Wise QR code — not a document to browse/edit
     out.push({
       id: f.getId(),
       name: f.getName(),

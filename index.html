@@ -973,19 +973,27 @@ function copyToClipboard(text, btn) {
     alert('Could not copy — long-press the value to copy it manually.');
   }
 }
+function jsStrLit_(s) {
+  return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'").replace(/\n/g, '\\n');
+}
 function renderWise() {
   if (!DATA) return;
   const list = document.getElementById('wise-list');
   const w = DATA.wise || {};
-  const field = (label, value) => !value ? '' : `
-    <div class="info-row">
-      <div style="color:var(--text4);font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">${esc(label)}</div>
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-top:5px;gap:8px">
-        <span style="color:var(--text);font-size:15px;font-weight:700">${esc(value)}</span>
-        <div class="wa-btn" onclick="copyToClipboard('${esc(value).replace(/'/g, "\\'")}', this)"><i class="ti ti-copy"></i>Copy</div>
-      </div>
+  const fields = [['Name', w.name], ['BSB Code', w.bsb], ['Account Number', w.account]].filter(([, v]) => v);
+
+  let html = '';
+  if (fields.length) {
+    const combined = fields.map(([label, value]) => `${label}: ${value}`).join('\n');
+    html += `<div class="info-row">
+      ${fields.map(([label, value], i) => `
+        <div style="${i ? 'margin-top:12px' : ''}">
+          <div style="color:var(--text4);font-size:10px;font-weight:600;letter-spacing:.05em;text-transform:uppercase">${esc(label)}</div>
+          <div style="color:var(--text);font-size:15px;font-weight:700;margin-top:3px">${esc(value)}</div>
+        </div>`).join('')}
+      <div class="wa-btn" style="justify-content:center;width:100%;margin-top:14px" onclick="copyToClipboard('${jsStrLit_(combined)}', this)"><i class="ti ti-copy"></i>Copy all details</div>
     </div>`;
-  let html = field('Name', w.name) + field('BSB Code', w.bsb) + field('Account Number', w.account);
+  }
   if (w.qrDataUri) {
     html += `<div class="info-row" style="text-align:center"><img src="${w.qrDataUri}" alt="Wise QR code" style="width:200px;height:200px;border-radius:12px;margin-top:2px"></div>`;
   }
