@@ -165,6 +165,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .tkt-dt{color:var(--text3);font-size:11px;text-align:right}
 .tkt-badge{background:var(--bg3);border-radius:10px;padding:2px 8px;color:var(--text3);font-size:10px}
 .tkt-badge.has{background:var(--green-bg);color:var(--green)}
+.tkt-badge.partial{background:var(--amber-bg);color:var(--amber)}
 .tkt-chev{color:var(--text4);font-size:14px;transition:transform .2s}
 .tkt-chev.open{transform:rotate(180deg)}
 .tkt-body{display:none;border-top:1px solid var(--border)}
@@ -289,6 +290,8 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
         <div id="ticketcheck-card" class="tot-block"></div>
         <div class="sec-label" style="margin-top:16px">Tap a ticket type to expand</div>
         <div id="tickets-list"><div class="empty-hint">Loading…</div></div>
+        <div class="sec-label" style="margin-top:16px">Latest check findings <span style="font-weight:400;color:var(--text3);text-transform:none">(from the Sheet — same on every device)</span></div>
+        <div id="ticketcheck-findings" class="tot-block"></div>
         <div class="notes-area">
           <div class="notes-lbl">⚠ Notes (saved on this device only — not synced to the Sheet)</div>
           <textarea id="ticket-notes" placeholder="Type notes here…" oninput="saveNotes(this.value)"></textarea>
@@ -741,13 +744,14 @@ function renderTickets() {
   list.innerHTML = tickets.ticketDefs.map((def, di) => {
     const paxRows = tickets.rows;
     const checkedCount = paxRows.filter(r => r.checks[di] && r.checks[di].checked).length;
+    const badgeClass = checkedCount === paxRows.length && paxRows.length > 0 ? ' has' : checkedCount > 0 ? ' partial' : '';
     const meta = [shortDate(def.date), to24h(def.time)].filter(Boolean).join(' · ');
     return `<div class="tkt-sec">
       <div class="tkt-hdr" onclick="toggleTicketSection(this)">
         <div class="tkt-top">
           <span class="tkt-title">${esc(def.title)}</span>
           <div class="tkt-meta">
-            <span class="tkt-badge${checkedCount ? ' has' : ''}" id="tb${di}">${checkedCount}/${paxRows.length}</span>
+            <span class="tkt-badge${badgeClass}" id="tb${di}">${checkedCount}/${paxRows.length}</span>
             <i class="ti ti-chevron-down tkt-chev"></i></div>
         </div>
         ${meta ? `<div class="tkt-dt">${esc(meta)}</div>` : ''}
@@ -779,7 +783,10 @@ function toggleTicket(id, col, defIndex, el) {
   const total = sec.querySelectorAll('.ck').length;
   const checked = sec.querySelectorAll('.ck.y').length;
   const badge = document.getElementById('tb' + defIndex);
-  if (badge) { badge.textContent = checked + '/' + total; badge.className = 'tkt-badge' + (checked > 0 ? ' has' : ''); }
+  if (badge) {
+    badge.textContent = checked + '/' + total;
+    badge.className = 'tkt-badge' + (checked === total && total > 0 ? ' has' : checked > 0 ? ' partial' : '');
+  }
   write({ action: 'toggleTicket', id: id, col: col, value: on });
 }
 function saveNotes(v) { localStorage.setItem('ptm_ticket_notes', v); }
@@ -1025,23 +1032,17 @@ function requestBoardingPassRun() {
 // the Drive ticket-inbox folder against the sheet and re-running is free.
 const TICKETCHECK_STATUS_LABEL = { idle: 'Idle', requested: 'Requested — waiting for watcher…', running: 'Running…', done: 'Done', error: 'Error' };
 
-// If the latest completed check found anything unusual, drop it into the
-// (device-local) Notes box automatically so it isn't missed. Guarded by
-// finishedAt so the same result doesn't get appended again on every
-// 45s poll while the mailbox still shows this same "done" run.
-function maybeAppendTicketCheckNote_(s) {
-  if (s.status !== 'done' || !s.finishedAt || !s.message) return;
-  const lastSeen = localStorage.getItem('ptm_ticket_notes_last_finished');
-  if (String(s.finishedAt) === lastSeen) return;
-  localStorage.setItem('ptm_ticket_notes_last_finished', String(s.finishedAt));
-  if (s.message === 'No issues found' || s.message === 'Tickets checked') return; // nothing unusual
-  const stamp = new Date(s.finishedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
-  const entry = `[Ticket check ${stamp}] ${s.message}`;
-  const existing = localStorage.getItem('ptm_ticket_notes') || '';
-  const updated = existing ? existing + '\n\n' + entry : entry;
-  localStorage.setItem('ptm_ticket_notes', updated);
-  const textarea = document.getElementById('ticket-notes');
-  if (textarea) textarea.value = updated;
+// Findings come straight from the Sheet (DATA.ticketCheck.message) on
+// every load/poll — same on every device, no per-device timing to get
+// wrong, unlike a locally-stored note would be. This is separate from the
+// free-text Notes box below it, which stays local/manual as labeled.
+function renderTicketCheckFindings_(s) {
+  const box = document.getElementById('ticketcheck-findings');
+  if (!box) return;
+  const hasIssues = s.message && !/^(no issues found|tickets checked)$/i.test(s.message.trim());
+  if (!hasIssues) { box.innerHTML = '<div class="empty-hint">No issues from the last check</div>'; return; }
+  const stamp = s.finishedAt ? new Date(s.finishedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
+  box.innerHTML = `<div class="tot-row" style="align-items:flex-start"><div class="tot-lbl" style="color:var(--red);text-align:left">${stamp ? esc(stamp) + ' — ' : ''}${esc(s.message)}</div></div>`;
 }
 
 function renderTicketCheckCard() {
@@ -1049,7 +1050,7 @@ function renderTicketCheckCard() {
   const card = document.getElementById('ticketcheck-card');
   if (!card) return;
   const s = DATA.ticketCheck || { status: 'idle' };
-  maybeAppendTicketCheckNote_(s);
+  renderTicketCheckFindings_(s);
   const heartbeatAgo = timeAgo(s.heartbeat);
   const watcherOnline = !!(s.heartbeat && (Date.now() - s.heartbeat) < 5 * 60 * 1000);
   const busy = s.status === 'requested' || s.status === 'running';
