@@ -606,7 +606,7 @@ function renderTours() {
   const rows = tours.rows;
   tbody.innerHTML = rows.map(r => `
     <tr>
-      <td class="nm">${esc(r.name)}</td>
+      <td class="nm">${esc(r.id)}. ${esc(r.name)}</td>
       <td class="tsep">${rowTotalHtml_(r, tours)}</td>
       <td><div class="ck${r.paid ? ' y' : ''}" onclick="togglePaid('${r.id}', this)"></div></td>
       <td>${ccWidget_('tip', r.id, -1, r.tip)}</td>
@@ -773,7 +773,7 @@ function renderTickets() {
         ${paxRows.map(r => {
           const c = r.checks[di];
           const missing = !r.passport;
-          return `<div class="tkt-pax"><div class="tkt-av${missing ? ' warn' : ''}">${esc(initials(r.name))}</div>
+          return `<div class="tkt-pax"><div class="tkt-av${missing ? ' warn' : ''}">${esc(r.id)}</div>
             <span class="tkt-pname${missing ? ' warn' : ''}">${esc(r.name)}</span>
             <span class="tkt-pp${missing ? ' warn' : ''}">${missing ? '⚠ missing' : esc(r.passport)}</span>
             <div class="ck${c.checked ? ' y' : ''}" onclick="toggleTicket('${r.id}', ${c.col}, ${di}, this)"></div>
