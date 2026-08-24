@@ -265,11 +265,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
     <div class="screen" id="screen-tours">
       <div class="tabs" id="tour-tabs">
-        <div class="tab active" onclick="switchTab('tours',this)">Tours</div>
-        <div class="tab" onclick="switchTab('tickets',this)">Tickets</div>
-        <div class="tab" onclick="switchTab('info',this)">Info &amp; diet</div>
-        <div class="tab" onclick="switchTab('receipts',this)">Receipts</div>
-        <div class="tab" onclick="switchTab('wise',this)">Wise</div>
+        <div class="tab active" data-view="tours" onclick="switchTab('tours',this)">Tours</div>
+        <div class="tab" data-view="tickets" onclick="switchTab('tickets',this)">Tickets</div>
+        <div class="tab" data-view="info" onclick="switchTab('info',this)">Info &amp; diet</div>
+        <div class="tab" data-view="receipts" onclick="switchTab('receipts',this)">Receipts</div>
+        <div class="tab" data-view="wise" onclick="switchTab('wise',this)">Wise</div>
       </div>
 
       <!-- OPTIONAL TOURS -->
@@ -475,9 +475,15 @@ function hardRefresh() {
   // pick up new app code — so the current tab can't survive in memory.
   // Stash it and restore after the reload instead.
   const active = document.querySelector('.screen.active');
+  // The Tours screen has its own pill tabs (Tours/Tickets/Info/Receipts/
+  // Wise) nested inside it — without also saving which one was selected,
+  // a refresh from e.g. Receipts would restore the Tours screen but always
+  // land back on its default "Tours" pill.
+  const activeSubTab = document.querySelector('#tour-tabs .tab.active');
   if (active) sessionStorage.setItem('lastScreen', JSON.stringify({
     id: active.id.replace('screen-', ''),
     title: document.getElementById('page-title').textContent,
+    subTab: activeSubTab ? activeSubTab.dataset.view : null,
   }));
   setTimeout(() => location.reload(), 250);
 }
@@ -496,8 +502,12 @@ function restoreLastScreen() {
   if (!saved) return;
   sessionStorage.removeItem('lastScreen');
   try {
-    const { id, title } = JSON.parse(saved);
+    const { id, title, subTab } = JSON.parse(saved);
     if (document.getElementById('screen-' + id)) switchScreen(id, title);
+    if (subTab) {
+      const tabEl = document.querySelector(`#tour-tabs .tab[data-view="${subTab}"]`);
+      if (tabEl) switchTab(subTab, tabEl);
+    }
   } catch (e) {}
 }
 
