@@ -834,7 +834,10 @@ function requestFlightScheduleRun_() {
 // VTGR/PNR spreadsheet Yenrri most recently uploaded to the Automations/
 // latam-cloud Drive folder and populates Traveller Data, DAILY CHECKLIST,
 // CHECK-IN STATUS, FLIGHT STATUS and the other sheets it builds from that.
-const SHEETIMPORT_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+// Column G (Progress) is written mid-run by the watcher as it streams the
+// runner's output — "current/total" bookings processed so far — same
+// pattern as BOARDINGPASS_TRIGGER's Progress column.
+const SHEETIMPORT_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat', 'Progress'];
 
 function sheetImportSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -843,6 +846,10 @@ function sheetImportSheet_() {
     sh = ss.insertSheet(SHEET_NAMES.sheetimport);
     sh.getRange(1, 1, 1, SHEETIMPORT_HEADERS_.length).setValues([SHEETIMPORT_HEADERS_]);
     sh.getRange(2, 1).setValue('idle');
+  } else if (sh.getLastColumn() < SHEETIMPORT_HEADERS_.length) {
+    // Tab already existed from before Progress was added — "create if
+    // missing" alone never backfills new columns onto an existing sheet.
+    sh.getRange(1, 1, 1, SHEETIMPORT_HEADERS_.length).setValues([SHEETIMPORT_HEADERS_]);
   }
   return sh;
 }
@@ -857,6 +864,7 @@ function getSheetImportStatus_() {
     finishedAt: epochMs_(row[3]),
     message: String(row[4] || ''),
     heartbeat: epochMs_(row[5]),
+    progress: String(row[6] || ''),
   };
 }
 
@@ -865,6 +873,7 @@ function requestSheetImportRun_() {
   sh.getRange(2, 1).setValue('requested');
   sh.getRange(2, 2).setValue(new Date());
   sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  sh.getRange(2, 7).setValue(''); // clear Progress from any previous run
   return getSheetImportStatus_();
 }
 
