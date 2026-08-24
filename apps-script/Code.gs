@@ -45,6 +45,7 @@ const SHEET_NAMES = {
   sunat: 'SUNAT_TRIGGER',
   boardingpass: 'BOARDINGPASS_TRIGGER',
   ticketcheck: 'TICKETCHECK_TRIGGER',
+  flightschedule: 'FLIGHTSCHEDULE_TRIGGER',
 };
 
 // The "TripADeal" Drive folder (Daily Itineraries, Tour Leader Reports,
@@ -178,6 +179,7 @@ function getAllData_() {
     sunat: getSunatStatus_(),
     boardingPass: getBoardingPassStatus_(),
     ticketCheck: getTicketCheckStatus_(),
+    flightSchedule: getFlightScheduleStatus_(),
     documents: getDocuments_(),
     wise: getWiseInfo_(),
   };
@@ -713,6 +715,47 @@ function requestTicketCheckRun_() {
   return getTicketCheckStatus_();
 }
 
+// ─── Flight monitor scheduling trigger ────────────────────────────────────
+// Same mailbox pattern again, for schedule-jobs.js — a one-shot setup step
+// (not a continuously-running monitor itself) that reads the current
+// tour's flight data and (re)installs the two actual background monitors
+// (flight-monitor.js, flight-status-monitor.js) with the right future
+// start times, plus a calendar reminder on the owner's own calendar. Safe
+// to run repeatedly — it recomputes and reinstalls cleanly each time.
+const FLIGHTSCHEDULE_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+
+function flightScheduleSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAMES.flightschedule);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAMES.flightschedule);
+    sh.getRange(1, 1, 1, FLIGHTSCHEDULE_HEADERS_.length).setValues([FLIGHTSCHEDULE_HEADERS_]);
+    sh.getRange(2, 1).setValue('idle');
+  }
+  return sh;
+}
+
+function getFlightScheduleStatus_() {
+  const sh = flightScheduleSheet_();
+  const row = sh.getRange(2, 1, 1, FLIGHTSCHEDULE_HEADERS_.length).getValues()[0];
+  return {
+    status: String(row[0] || 'idle').trim() || 'idle',
+    requestedAt: epochMs_(row[1]),
+    startedAt: epochMs_(row[2]),
+    finishedAt: epochMs_(row[3]),
+    message: String(row[4] || ''),
+    heartbeat: epochMs_(row[5]),
+  };
+}
+
+function requestFlightScheduleRun_() {
+  const sh = flightScheduleSheet_();
+  sh.getRange(2, 1).setValue('requested');
+  sh.getRange(2, 2).setValue(new Date());
+  sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  return getFlightScheduleStatus_();
+}
+
 // ─── WRITE ───────────────────────────────────────────────────────────────
 function handleWrite_(body) {
   switch (body.action) {
@@ -733,6 +776,7 @@ function handleWrite_(body) {
     case 'requestSunatRun': return requestSunatRun_();
     case 'requestBoardingPassRun': return requestBoardingPassRun_();
     case 'requestTicketCheckRun': return requestTicketCheckRun_();
+    case 'requestFlightScheduleRun': return requestFlightScheduleRun_();
     default: throw new Error('Unknown write action: ' + body.action);
   }
 }
