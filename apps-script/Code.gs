@@ -185,7 +185,25 @@ function getAllData_() {
     sheetImport: getSheetImportStatus_(),
     documents: getDocuments_(),
     wise: getWiseInfo_(),
+    arrivalAssumed: getArrivalAssumedNames_(),
   };
+}
+
+// sheet-runner.js writes a comma-separated list here (Traveller Data!P1)
+// whenever a traveller's Arrival Lima date had to be filled in from an
+// "Arrive early" source column instead of a real dated column — meaning
+// their arrival date is an ASSUMPTION (same flight number as the rest of
+// the group), not confirmed. Surfaced as a prominent warning on the
+// Flights tab so it can't be quietly missed. Written fresh every import
+// (blank if nobody needs flagging that run), so this never shows a stale
+// warning from a previous tour.
+function getArrivalAssumedNames_() {
+  try {
+    const val = sheet_('travellerData').getRange(1, 16).getValue(); // column P
+    return String(val || '').trim();
+  } catch (e) {
+    return '';
+  }
 }
 
 // ─── CANCELLED TRAVELLERS ──────────────────────────────────────────────
