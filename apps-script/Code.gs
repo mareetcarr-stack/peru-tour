@@ -40,6 +40,7 @@ const SHEET_NAMES = {
   tickets: 'TICKETS',
   info: 'B-DAYS, AGES, DIET',
   flights: 'FLIGHT STATUS',
+  travellerData: 'Traveller Data',
   recs: 'RECOMMENDATIONS',
   receipts: 'RECEIPTS',
   sunat: 'SUNAT_TRIGGER',
@@ -722,7 +723,12 @@ function requestTicketCheckRun_() {
 // (flight-monitor.js, flight-status-monitor.js) with the right future
 // start times, plus a calendar reminder on the owner's own calendar. Safe
 // to run repeatedly — it recomputes and reinstalls cleanly each time.
-const FLIGHTSCHEDULE_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+// Column G (DataSnapshot) holds a fingerprint of the Traveller Data /
+// FLIGHT STATUS cells schedule-jobs.js actually reads, captured at the
+// moment a run is requested — so the app can tell when that data has
+// since changed and a re-run is actually needed (see
+// flightScheduleDataSnapshot_() below).
+const FLIGHTSCHEDULE_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat', 'DataSnapshot'];
 
 function flightScheduleSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -731,13 +737,63 @@ function flightScheduleSheet_() {
     sh = ss.insertSheet(SHEET_NAMES.flightschedule);
     sh.getRange(1, 1, 1, FLIGHTSCHEDULE_HEADERS_.length).setValues([FLIGHTSCHEDULE_HEADERS_]);
     sh.getRange(2, 1).setValue('idle');
+  } else if (sh.getLastColumn() < FLIGHTSCHEDULE_HEADERS_.length) {
+    // Tab already existed from before DataSnapshot was added — "create if
+    // missing" alone never backfills new columns onto an existing sheet.
+    sh.getRange(1, 1, 1, FLIGHTSCHEDULE_HEADERS_.length).setValues([FLIGHTSCHEDULE_HEADERS_]);
   }
   return sh;
+}
+
+// A fingerprint of exactly the cells schedule-jobs.js reads to compute
+// monitor start times: Traveller Data's Lima-arrival column (including
+// its header, which itself encodes the arrival date) and FLIGHT STATUS's
+// date + scheduled-time columns. Any change to those cells changes this
+// string, regardless of anything else happening elsewhere in the sheet.
+function flightScheduleDataSnapshot_() {
+  // Only the exact substrings schedule-jobs.js's own regexes extract are
+  // included — not the raw cell text. FLIGHT STATUS column D in
+  // particular carries live-updating status text ("EN ROUTE — arriving in
+  // 12 minutes"), most of which schedule-jobs.js ignores entirely (it
+  // only reads a *leading* HH:MM). Fingerprinting the raw cell would flag
+  // "changed" on every such status tick even though nothing that actually
+  // feeds the schedule computation moved.
+  const traveller = sheet_('travellerData');
+  const travellerLastRow = traveller.getLastRow();
+  const limaArrivals = travellerLastRow > 0
+    ? traveller.getRange(1, 8, travellerLastRow, 1).getValues().map((r) => {
+        const cell = String(r[0] || '');
+        const m = cell.match(/(\d{1,2}):(\d{2})/);
+        return m ? m[0] : cell; // row 1 is the header (carries the date, no time) — keep as-is
+      }).join('|')
+    : '';
+
+  const flights = sheet_('flights');
+  const flightsLastRow = flights.getLastRow();
+  const flightRows = flightsLastRow > 1
+    ? flights.getRange(2, 1, flightsLastRow - 1, 4).getValues().map((r) => {
+        const dateStr = String(r[0] || '');
+        const m = String(r[3] || '').match(/^(\d{1,2}):(\d{2})/);
+        return dateStr + '~' + (m ? m[0] : '');
+      }).join('|')
+    : '';
+
+  return limaArrivals + '##' + flightRows;
 }
 
 function getFlightScheduleStatus_() {
   const sh = flightScheduleSheet_();
   const row = sh.getRange(2, 1, 1, FLIGHTSCHEDULE_HEADERS_.length).getValues()[0];
+  const storedSnapshot = String(row[6] || '');
+  let dataChangedSinceLastRun = false;
+  if (storedSnapshot) {
+    try {
+      dataChangedSinceLastRun = flightScheduleDataSnapshot_() !== storedSnapshot;
+    } catch (e) {
+      // Can't read the source sheets right now — don't false-alarm.
+      dataChangedSinceLastRun = false;
+    }
+  }
   return {
     status: String(row[0] || 'idle').trim() || 'idle',
     requestedAt: epochMs_(row[1]),
@@ -745,6 +801,7 @@ function getFlightScheduleStatus_() {
     finishedAt: epochMs_(row[3]),
     message: String(row[4] || ''),
     heartbeat: epochMs_(row[5]),
+    dataChangedSinceLastRun: dataChangedSinceLastRun,
   };
 }
 
@@ -753,6 +810,11 @@ function requestFlightScheduleRun_() {
   sh.getRange(2, 1).setValue('requested');
   sh.getRange(2, 2).setValue(new Date());
   sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  try {
+    sh.getRange(2, 7).setValue(flightScheduleDataSnapshot_());
+  } catch (e) {
+    sh.getRange(2, 7).setValue(''); // couldn't read source data — leave unset rather than fail the request
+  }
   return getFlightScheduleStatus_();
 }
 

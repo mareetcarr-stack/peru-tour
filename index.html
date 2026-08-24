@@ -1189,9 +1189,16 @@ function renderFlightScheduleCard() {
   let statusLine = FLIGHTSCHEDULE_STATUS_LABEL[s.status] || s.status;
   if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
   const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text2)';
+  // The sheet's Traveller Data / FLIGHT STATUS cells this reads have
+  // changed since the last time this was requested — the two background
+  // monitors are still scheduled off the OLD data until this is re-run.
+  const staleWarning = s.dataChangedSinceLastRun && !busy
+    ? `<div class="tot-row" style="margin-top:2px"><div style="color:var(--amber);font-size:11px">⚠ Flight data has changed since this last ran — tap to reschedule</div></div>`
+    : '';
   card.innerHTML = `
     <div class="tot-row"><div class="tot-lbl">Status</div><div style="color:${statusColor};font-size:11px;font-weight:600;text-align:right;max-width:70%">${esc(statusLine)}</div></div>
     <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text4)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
+    ${staleWarning}
     <div style="margin-top:10px">
       <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="requestFlightScheduleRun()">
         <i class="ti ti-calendar-event"></i>&nbsp;${busy ? 'In progress…' : 'Schedule Flight Monitors'}
