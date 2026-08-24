@@ -452,17 +452,14 @@ const EXCLUDED_DOC_IDS_ = [
 // script, not something Yenrri or Maree would casually rename.
 // User confirmed: each pass is set to "Anyone with the link can view" so
 // the WhatsApp share button works for passengers without a Google login.
-// Only show passes generated recently — otherwise this list just grows
-// forever as old flights pile up. Anything older than this is still safe
-// in Drive, it just won't clutter the app.
-const BOARDINGPASS_MAX_AGE_MS_ = 3 * 24 * 60 * 60 * 1000; // 3 days
-
+// No age filter here — boarding-pass-runner.js now clears out the
+// previous batch from this Drive folder itself before writing a new one,
+// so whatever's here is already only ever the most recent run's passes.
 function getBoardingPassDocs_() {
   const it = DriveApp.getFoldersByName('LATAM Boarding Passes');
   if (!it.hasNext()) return [];
   const folder = it.next();
-  const cutoff = Date.now() - BOARDINGPASS_MAX_AGE_MS_;
-  const files = listFolderFiles_(folder).filter((f) => f.updated >= cutoff);
+  const files = listFolderFiles_(folder);
   files.forEach((f) => {
     try {
       DriveApp.getFileById(f.id).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
