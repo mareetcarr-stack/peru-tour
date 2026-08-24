@@ -601,7 +601,10 @@ function getReceipts_() {
 //   E: Message (result summary or error text)
 //   F: WatcherHeartbeat (written by the watcher on every poll, so the app
 //      can tell whether anything is actually listening)
-const SUNAT_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+// Column G (Progress) is written mid-run by the watcher as the bot
+// advances (login → per-receipt submission → merge → email), same
+// pattern as the boarding-pass and import mailboxes.
+const SUNAT_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat', 'Progress'];
 
 function sunatSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -610,6 +613,10 @@ function sunatSheet_() {
     sh = ss.insertSheet(SHEET_NAMES.sunat);
     sh.getRange(1, 1, 1, SUNAT_HEADERS_.length).setValues([SUNAT_HEADERS_]);
     sh.getRange(2, 1).setValue('idle');
+  } else if (sh.getLastColumn() < SUNAT_HEADERS_.length) {
+    // Tab already existed from before Progress was added — "create if
+    // missing" alone never backfills new columns onto an existing sheet.
+    sh.getRange(1, 1, 1, SUNAT_HEADERS_.length).setValues([SUNAT_HEADERS_]);
   }
   return sh;
 }
@@ -624,6 +631,7 @@ function getSunatStatus_() {
     finishedAt: epochMs_(row[3]),
     message: String(row[4] || ''),
     heartbeat: epochMs_(row[5]),
+    progress: String(row[6] || ''),
   };
 }
 
@@ -633,6 +641,7 @@ function requestSunatRun_() {
   sh.getRange(2, 1).setValue('requested');
   sh.getRange(2, 2).setValue(new Date());
   sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  sh.getRange(2, 7).setValue(''); // clear Progress from any previous run
   return getSunatStatus_();
 }
 
@@ -894,6 +903,7 @@ function handleWrite_(body) {
     case 'setDiet': return setDiet_(body.id, body.value);
     case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
+    case 'deleteReceipt': return deleteReceipt_(body.row);
     case 'requestSunatRun': return requestSunatRun_();
     case 'requestBoardingPassRun': return requestBoardingPassRun_();
     case 'requestTicketCheckRun': return requestTicketCheckRun_();
@@ -1026,4 +1036,17 @@ function setReceiptField_(row, field, value) {
   const sh = sheet_('receipts');
   sh.getRange(row, col).setValue(field === 'amount' ? (parseFloat(value) || 0) : value);
   return { row: row, field: field, value: value };
+}
+
+// Blanks the row's values rather than deleting the row itself — deleting
+// would shift every row below it (breaking any in-flight references to
+// those row numbers) and drop the dropdown validation. Both the app and
+// the SUNAT bot skip blank rows, so an emptied row simply disappears from
+// every view. Same mechanism the bot itself uses to clear a receipt after
+// successful submission.
+function deleteReceipt_(row) {
+  const sh = sheet_('receipts');
+  if (row < 2) throw new Error('Refusing to clear the header row');
+  sh.getRange(row, 1, 1, 5).setValue('');
+  return { row: row };
 }

@@ -977,7 +977,10 @@ function receiptCardHtml_(r, paymentMethods, currencies) {
   const pmOptions = (!r.paymentMethod || paymentMethods.includes(r.paymentMethod)) ? paymentMethods : [r.paymentMethod, ...paymentMethods];
   const curOptions = (!r.currency || currencies.includes(r.currency)) ? currencies : [r.currency, ...currencies];
   return `<div class="rec-card">
-    <input class="diet-input" placeholder="Description" value="${esc(r.description)}" onchange="setReceiptField(${r.row},'description',this.value)">
+    <div style="display:flex;gap:6px;align-items:flex-start">
+      <input class="diet-input" style="flex:1;min-width:0" placeholder="Description" value="${esc(r.description)}" onchange="setReceiptField(${r.row},'description',this.value)">
+      <div class="wa-btn" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);flex-shrink:0" title="Delete this receipt" onclick="deleteReceipt(${r.row})"><i class="ti ti-x"></i></div>
+    </div>
     <input class="diet-input" style="margin-top:6px" placeholder="Booking ref / observation" value="${esc(r.observation)}" onchange="setReceiptField(${r.row},'observation',this.value)">
     <div style="display:flex;gap:6px;margin-top:6px">
       <select class="diet-input" style="flex:2;min-width:0" onchange="setReceiptField(${r.row},'paymentMethod',this.value)">
@@ -1005,6 +1008,19 @@ function addReceiptRow() {
       DATA.receipts.rows.push({ row: res.result.row, description: '', observation: '', paymentMethod: paymentMethod, currency: currency, amount: 0 });
       renderReceipts();
     });
+}
+
+// Clears the receipt's row in the Sheet (values only — the row itself
+// stays so nothing shifts) for entries made in error, so they can't be
+// accidentally submitted to SUNAT.
+function deleteReceipt(row) {
+  const r = (DATA.receipts.rows || []).find(x => x.row === row);
+  const label = r && r.description ? `"${r.description}"` : 'this receipt';
+  if (!confirm(`Delete ${label}?\n\nIt will be removed from the sheet and won't be submitted to SUNAT.`)) return;
+  DATA.receipts.rows = (DATA.receipts.rows || []).filter(x => x.row !== row);
+  renderReceipts();
+  renderSunatCard(); // receipt count on the submit button changes too
+  write({ action: 'deleteReceipt', row: row });
 }
 
 // ─── SUNAT SUBMISSION — a "mailbox" row a watcher on the owner's Mac ────
@@ -1035,9 +1051,28 @@ function renderSunatCard() {
   let statusLine = SUNAT_STATUS_LABEL[s.status] || s.status;
   if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
   const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text2)';
+
+  // Live stage text streamed by the watcher as the bot advances
+  // ("Logging in…", "Submitting receipt 2/4…", "Emailing receipts…",
+  // "Email sent ✓"). When the text carries an X/Y count, draw a bar too.
+  let progressHtml = '';
+  if (s.status === 'running' && s.progress) {
+    const m = /(\d+)\/(\d+)/.exec(s.progress);
+    let barHtml = '';
+    if (m) {
+      const cur = parseInt(m[1], 10), total = parseInt(m[2], 10);
+      const pct = total > 0 ? Math.min(100, Math.round((cur / total) * 100)) : 0;
+      barHtml = `<div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>`;
+    }
+    progressHtml = `
+      <div class="tot-row"><div class="tot-lbl">Progress</div><div style="font-size:11px;color:var(--text2);text-align:right;max-width:70%">${esc(s.progress)}</div></div>
+      ${barHtml}`;
+  }
+
   card.innerHTML = `
     <div class="tot-row"><div class="tot-lbl">Status</div><div style="color:${statusColor};font-size:11px;font-weight:600;text-align:right;max-width:70%">${esc(statusLine)}</div></div>
     <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text4)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
+    ${progressHtml}
     <div style="margin-top:10px">
       <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="startSunatCountdown()">
         <i class="ti ti-send-2"></i>&nbsp;${busy ? 'In progress…' : `Submit ${n} receipt${n === 1 ? '' : 's'} to SUNAT`}
