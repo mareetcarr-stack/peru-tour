@@ -190,24 +190,35 @@ function getAllData_() {
 
 // ─── CANCELLED TRAVELLERS ──────────────────────────────────────────────
 // A traveller who dropped out before the tour (but was never removed from
-// the sheet's row layout — every tab is keyed by passenger ID, and
-// reshuffling rows would break that) gets marked here instead. Column N
-// of CHECK-IN STATUS (the master passenger tab) holds this — every other
-// tab that's keyed by passenger ID looks it up from here rather than
-// duplicating a "Cancelled" column on each of its own sheets.
+// the sheet's row layout) gets marked here instead. Column N of CHECK-IN
+// STATUS (the master passenger tab) holds this.
+//
+// IMPORTANT: this is looked up by NAME, not by passenger ID, when checking
+// other tabs (Tours/Tickets/Info & Diet) for a match. sheet-runner.js
+// builds those three tabs sorted by LAST NAME, but builds CHECK-IN STATUS
+// sorted by PNR — so the same `id` number refers to a different row
+// position (and therefore a different person) in each sheet. Matching by
+// id cross-sheet was a real bug: cancelling one traveller on the
+// Passengers tab was silently cancelling whoever happened to share that
+// same row number on Tours/Tickets/Info & Diet instead. Every sheet does
+// carry the same first/second name for the same person regardless of row
+// order, so that's the only reliable join key across them.
 const CANCELLED_COL_ = 14; // column N, 1-based
 function ensureCancelledHeader_() {
   const sh = sheet_('checkin');
   const header = sh.getRange(1, CANCELLED_COL_).getValue();
   if (!header) sh.getRange(1, CANCELLED_COL_).setValue('Cancelled');
 }
-function getCancelledIds_() {
+function normalizeName_(first, second) {
+  return fullName_(first, second).trim().toLowerCase().replace(/\s+/g, ' ');
+}
+function getCancelledNames_() {
   const rows = sheet_('checkin').getDataRange().getValues();
-  const ids = new Set();
+  const names = new Set();
   for (let r = 1; r < rows.length; r++) {
-    if (bool_(rows[r][CANCELLED_COL_ - 1])) ids.add(String(rows[r][0]));
+    if (bool_(rows[r][CANCELLED_COL_ - 1])) names.add(normalizeName_(rows[r][1], rows[r][2]));
   }
-  return ids;
+  return names;
 }
 function toggleCancelled_(id, value) {
   ensureCancelledHeader_();
@@ -305,7 +316,7 @@ function getTours_() {
   const totalCol = headers.findIndex((h) => String(h).trim().toUpperCase() === 'TOTAL');
   const paidCol = headers.findIndex((h) => String(h).trim().toUpperCase() === 'PAID');
 
-  const cancelledIds = getCancelledIds_();
+  const cancelledNames = getCancelledNames_();
   const out = [];
   for (let r = 2; r < rows.length; r++) {
     const row = rows[r];
@@ -316,7 +327,7 @@ function getTours_() {
       tours: defs.map((d) => ({ name: d.name, t: bool_(row[d.colT]), v: parseCC_(row[d.colV]) })),
       total: totalCol >= 0 ? row[totalCol] : '',
       paid: paidCol >= 0 ? bool_(row[paidCol]) : false,
-      cancelled: cancelledIds.has(String(row[0])),
+      cancelled: cancelledNames.has(normalizeName_(row[1], row[2])),
     });
   }
   return {
@@ -336,7 +347,7 @@ function getTickets_() {
     if (!headers[i]) continue;
     defs.push({ col: i, title: String(headers[i]).trim(), date: cellStr_(dateRow[i]) || '', time: cellStr_(timeRow[i]) || '' });
   }
-  const cancelledIds = getCancelledIds_();
+  const cancelledNames = getCancelledNames_();
   const out = [];
   for (let r = 3; r < rows.length; r++) {
     const row = rows[r];
@@ -344,7 +355,7 @@ function getTickets_() {
     out.push({
       id: String(row[0]), name: fullName_(row[1], row[2]), passport: row[3] || '',
       checks: defs.map((d) => ({ col: d.col, checked: bool_(row[d.col]) })),
-      cancelled: cancelledIds.has(String(row[0])),
+      cancelled: cancelledNames.has(normalizeName_(row[1], row[2])),
     });
   }
   return { ticketDefs: defs, rows: out };
@@ -352,7 +363,7 @@ function getTickets_() {
 
 function getInfo_() {
   const rows = sheet_('info').getDataRange().getValues();
-  const cancelledIds = getCancelledIds_();
+  const cancelledNames = getCancelledNames_();
   const out = [];
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
@@ -360,7 +371,7 @@ function getInfo_() {
     out.push({
       id: String(row[0]), name: fullName_(row[1], row[2]),
       birthday: isoDate_(row[3]), age: row[4] || '', diet: row[5] || '',
-      cancelled: cancelledIds.has(String(row[0])),
+      cancelled: cancelledNames.has(normalizeName_(row[1], row[2])),
     });
   }
   return out;
