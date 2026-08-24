@@ -47,6 +47,7 @@ const SHEET_NAMES = {
   boardingpass: 'BOARDINGPASS_TRIGGER',
   ticketcheck: 'TICKETCHECK_TRIGGER',
   flightschedule: 'FLIGHTSCHEDULE_TRIGGER',
+  sheetimport: 'SHEETIMPORT_TRIGGER',
 };
 
 // The "TripADeal" Drive folder (Daily Itineraries, Tour Leader Reports,
@@ -181,6 +182,7 @@ function getAllData_() {
     boardingPass: getBoardingPassStatus_(),
     ticketCheck: getTicketCheckStatus_(),
     flightSchedule: getFlightScheduleStatus_(),
+    sheetImport: getSheetImportStatus_(),
     documents: getDocuments_(),
     wise: getWiseInfo_(),
   };
@@ -818,6 +820,46 @@ function requestFlightScheduleRun_() {
   return getFlightScheduleStatus_();
 }
 
+// ─── Traveller data import trigger ─────────────────────────────────────
+// Same mailbox pattern again, for sheet-runner.js — a one-off, start-of-
+// tour setup step (like the other two above) that reads whatever
+// VTGR/PNR spreadsheet Yenrri most recently uploaded to the Automations/
+// latam-cloud Drive folder and populates Traveller Data, DAILY CHECKLIST,
+// CHECK-IN STATUS, FLIGHT STATUS and the other sheets it builds from that.
+const SHEETIMPORT_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat'];
+
+function sheetImportSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAMES.sheetimport);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAMES.sheetimport);
+    sh.getRange(1, 1, 1, SHEETIMPORT_HEADERS_.length).setValues([SHEETIMPORT_HEADERS_]);
+    sh.getRange(2, 1).setValue('idle');
+  }
+  return sh;
+}
+
+function getSheetImportStatus_() {
+  const sh = sheetImportSheet_();
+  const row = sh.getRange(2, 1, 1, SHEETIMPORT_HEADERS_.length).getValues()[0];
+  return {
+    status: String(row[0] || 'idle').trim() || 'idle',
+    requestedAt: epochMs_(row[1]),
+    startedAt: epochMs_(row[2]),
+    finishedAt: epochMs_(row[3]),
+    message: String(row[4] || ''),
+    heartbeat: epochMs_(row[5]),
+  };
+}
+
+function requestSheetImportRun_() {
+  const sh = sheetImportSheet_();
+  sh.getRange(2, 1).setValue('requested');
+  sh.getRange(2, 2).setValue(new Date());
+  sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
+  return getSheetImportStatus_();
+}
+
 // ─── WRITE ───────────────────────────────────────────────────────────────
 function handleWrite_(body) {
   switch (body.action) {
@@ -839,6 +881,7 @@ function handleWrite_(body) {
     case 'requestBoardingPassRun': return requestBoardingPassRun_();
     case 'requestTicketCheckRun': return requestTicketCheckRun_();
     case 'requestFlightScheduleRun': return requestFlightScheduleRun_();
+    case 'requestSheetImportRun': return requestSheetImportRun_();
     default: throw new Error('Unknown write action: ' + body.action);
   }
 }

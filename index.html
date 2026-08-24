@@ -23,8 +23,8 @@
    the Sheet still make sense) but is greyed out and non-interactive
    everywhere except the Passengers tab, where the Reinstate button lives. */
 .cancelled-row{opacity:.4;pointer-events:none}
-.wa-btn,.nav-item,.tab,.ck,.chk-box,.tkt-hdr,.bday-btn,#refresh-btn{transition:transform .08s ease,opacity .08s ease}
-.wa-btn:active,.nav-item:active,.tab:active,.ck:active,.chk-box:active,.tkt-hdr:active,.bday-btn:active,#refresh-btn:active{transform:scale(.92);opacity:.7}
+.wa-btn,.nav-item,.tab,.ck,.chk-box,.tkt-hdr,.bday-btn,#refresh-btn,#setup-btn{transition:transform .08s ease,opacity .08s ease}
+.wa-btn:active,.nav-item:active,.tab:active,.ck:active,.chk-box:active,.tkt-hdr:active,.bday-btn:active,#refresh-btn:active,#setup-btn:active{transform:scale(.92);opacity:.7}
 :root{
   /* Back to a fully black page per feedback, but with a visible light
      border on every content surface (card/row/table) so it still reads as
@@ -61,7 +61,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 #sync-dot.saving{background:var(--amber);animation:pulse 1s infinite}
 #sync-dot.saved{background:var(--green)}
 #sync-dot.error{background:var(--red)}
-#refresh-btn{display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:17px;cursor:pointer;padding:2px}
+#refresh-btn,#setup-btn{display:flex;align-items:center;justify-content:center;color:var(--text3);font-size:17px;cursor:pointer;padding:2px}
 #refresh-btn.spin i{animation:spin .6s linear}
 @keyframes spin{from{transform:rotate(0)}to{transform:rotate(360deg)}}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
@@ -235,6 +235,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
   <div id="topbar">
     <h1 id="page-title">Flights</h1>
     <div id="topbar-right">
+      <div id="setup-btn" title="New tour setup" onclick="switchScreen('setup','Setup')"><i class="ti ti-settings"></i></div>
       <div id="refresh-btn" title="Refresh app" onclick="hardRefresh()"><i class="ti ti-refresh"></i></div>
       <div id="sync-dot" title="Sync status"></div>
       <span class="badge red" id="top-badge">1 alert</span>
@@ -246,9 +247,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
     <div class="screen active" id="screen-flights">
       <div id="flights-alert"></div>
-      <div class="sec-label">Schedule Flight Monitors</div>
-      <div id="flightschedule-card" class="tot-block"></div>
-      <div class="sec-label" style="margin-top:16px">Flights</div>
+      <div class="sec-label">Flights</div>
       <div id="flights-list"><div class="empty-hint">Loading…</div></div>
     </div>
 
@@ -301,9 +300,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
       <!-- TICKETS -->
       <div id="tab-tickets" style="display:none">
-        <div class="sec-label">Check Tickets</div>
-        <div id="ticketcheck-card" class="tot-block"></div>
-        <div class="sec-label" style="margin-top:16px">Tap a ticket type to expand</div>
+        <div class="sec-label">Tap a ticket type to expand</div>
         <div id="tickets-list"><div class="empty-hint">Loading…</div></div>
         <div class="sec-label" style="margin-top:16px">Latest check findings</div>
         <div id="ticketcheck-findings" class="tot-block"></div>
@@ -344,6 +341,20 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
     <div class="screen" id="screen-docs">
       <div id="docs-list"><div class="empty-hint">Loading…</div></div>
+    </div>
+
+    <!-- SETUP — one-off tasks only needed at the start of a new tour group.
+         Reached via the gear icon in the top bar, not the bottom nav (which
+         is already full) — it's not part of the day-to-day tab rotation. -->
+    <div class="screen" id="screen-setup">
+      <div class="hint">These only need doing once at the start of a new tour group, not day-to-day.</div>
+      <div class="sec-label">Import Traveller Data</div>
+      <div class="hint">Have Yenrri upload the agency's spreadsheet (filename containing VTGR or PNR) to the "Automations &gt; latam-cloud" Drive folder first, then tap this.</div>
+      <div id="sheetimport-card" class="tot-block"></div>
+      <div class="sec-label" style="margin-top:16px">Check Tickets</div>
+      <div id="ticketcheck-card" class="tot-block"></div>
+      <div class="sec-label" style="margin-top:16px">Schedule Flight Monitors</div>
+      <div id="flightschedule-card" class="tot-block"></div>
     </div>
 
   </div><!-- /screens -->
@@ -460,7 +471,7 @@ function loadData() {
   return apiGet({ action: 'data' }).then((res) => {
     if (!res.ok) throw new Error(res.error);
     DATA = res.data;
-    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts(); renderSunatCard(); renderBoardingPassCard(); renderTicketCheckCard(); renderFlightScheduleCard(); renderDocuments(); renderWise();
+    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts(); renderSunatCard(); renderBoardingPassCard(); renderTicketCheckCard(); renderFlightScheduleCard(); renderSheetImportCard(); renderDocuments(); renderWise();
   }).catch((err) => { console.error('loadData failed', err); });
 }
 
@@ -494,7 +505,10 @@ function switchScreen(id, title) {
   document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('screen-' + id).classList.add('active');
-  document.getElementById('nav-' + id).classList.add('active');
+  // Setup isn't in the bottom nav (reached via the top-bar gear icon
+  // instead), so there's no matching nav-setup element to highlight.
+  const navEl = document.getElementById('nav-' + id);
+  if (navEl) navEl.classList.add('active');
   document.getElementById('page-title').textContent = title;
 }
 
@@ -1213,6 +1227,39 @@ function requestFlightScheduleRun() {
   });
 }
 
+// ─── TRAVELLER DATA IMPORT — same "mailbox" pattern again, for ─────────
+// sheet-runner.js. No countdown here either: it only reads whatever
+// spreadsheet Yenrri already uploaded to Drive and re-running is free.
+const SHEETIMPORT_STATUS_LABEL = { idle: 'Idle', requested: 'Requested — waiting for watcher…', running: 'Running…', done: 'Done', error: 'Error' };
+
+function renderSheetImportCard() {
+  if (!DATA) return;
+  const card = document.getElementById('sheetimport-card');
+  if (!card) return;
+  const s = DATA.sheetImport || { status: 'idle' };
+  const heartbeatAgo = timeAgo(s.heartbeat);
+  const watcherOnline = !!(s.heartbeat && (Date.now() - s.heartbeat) < 5 * 60 * 1000);
+  const busy = s.status === 'requested' || s.status === 'running';
+  let statusLine = SHEETIMPORT_STATUS_LABEL[s.status] || s.status;
+  if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
+  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text2)';
+  card.innerHTML = `
+    <div class="tot-row"><div class="tot-lbl">Status</div><div style="color:${statusColor};font-size:11px;font-weight:600;text-align:right;max-width:70%">${esc(statusLine)}</div></div>
+    <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text4)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
+    <div style="margin-top:10px">
+      <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="requestSheetImportRun()">
+        <i class="ti ti-upload"></i>&nbsp;${busy ? 'In progress…' : 'Import Traveller Data'}
+      </div>
+    </div>`;
+}
+
+function requestSheetImportRun() {
+  write({ action: 'requestSheetImportRun' }).then((res) => {
+    DATA.sheetImport = res.result;
+    renderSheetImportCard();
+  });
+}
+
 // ─── WISE PAYMENT DETAILS ────────────────────────────────────────
 // Name/BSB/account live only in the Sheet's WISE tab and the QR image only
 // in Drive — neither ever touches this public source file.
@@ -1339,7 +1386,7 @@ setInterval(() => { if (document.visibilityState === 'visible') loadRates(); }, 
 setInterval(() => {
   if (document.visibilityState !== 'visible' || !DATA) return;
   const busy = (obj) => obj && (obj.status === 'requested' || obj.status === 'running');
-  if (busy(DATA.sunat) || busy(DATA.boardingPass) || busy(DATA.ticketCheck) || busy(DATA.flightSchedule)) loadData();
+  if (busy(DATA.sunat) || busy(DATA.boardingPass) || busy(DATA.ticketCheck) || busy(DATA.flightSchedule) || busy(DATA.sheetImport)) loadData();
 }, 10000);
 </script>
 </body>
