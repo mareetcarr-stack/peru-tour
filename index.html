@@ -197,8 +197,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 
 /* info & diet */
 .info-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;border:1px solid var(--border)}
+.info-row.has-diet{background:var(--amber-bg);border-color:var(--amber-border)}
 .info-top{display:flex;align-items:center;gap:10px}
 .diet-input{width:100%;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:8px;color:var(--dark-text);font-size:12px;padding:6px 9px;margin-top:8px;font-family:inherit;outline:none}
+.diet-input.has-diet{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
 .bday-btn{font-size:10px;padding:3px 8px;border-radius:8px;cursor:pointer;flex-shrink:0;border:none;font-family:inherit;font-weight:600}
 .bday-btn.off{background:var(--bg3);color:var(--text4);border:1px solid var(--border2)}
 .bday-btn.on{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
@@ -904,10 +906,11 @@ function renderInfo() {
   if (!info.length) { list.innerHTML = '<div class="empty-hint">No passenger info yet</div>'; return; }
   list.innerHTML = info.map(p => {
     const hasBday = !!p.birthday;
-    return `<div class="info-row${p.cancelled ? ' cancelled-row' : ''}"><div class="info-top"><div class="av">${esc(initials(p.name))}</div>
-      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}${p.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}${p.age ? ` <span style="opacity:.6;font-weight:400">(${esc(p.age)})</span>` : ''}</div></div>
+    const hasDiet = !!(p.diet && p.diet.trim());
+    return `<div class="info-row${p.cancelled ? ' cancelled-row' : ''}${hasDiet ? ' has-diet' : ''}"><div class="info-top"><div class="av">${esc(initials(p.name))}</div>
+      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}${p.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}${hasDiet ? ' <span class="pill a">🍽️ Diet</span>' : ''}${p.age ? ` <span style="opacity:.6;font-weight:400">(${esc(p.age)})</span>` : ''}</div></div>
       <button class="bday-btn ${hasBday ? 'on' : 'off'}" onclick="togBday('${p.id}', this)">${hasBday ? '🎂 During tour!' : '🎂 Birthday?'}</button></div>
-      <input class="diet-input" type="text" placeholder="Dietary requirements — tap to edit" value="${esc(p.diet)}" onchange="setDiet('${p.id}', this.value)">
+      <input class="diet-input${hasDiet ? ' has-diet' : ''}" type="text" placeholder="Dietary requirements — tap to edit" value="${esc(p.diet)}" onchange="setDiet('${p.id}', this.value)">
       <div class="bday-area${hasBday ? ' open' : ''}"><span class="bday-lbl">Date:</span>
         <input type="date" class="bday-input" value="${esc(p.birthday)}" onchange="setBirthday('${p.id}', this.value)"></div>
     </div>`;
@@ -932,6 +935,7 @@ function setBirthday(id, value) {
 }
 function setDiet(id, value) {
   const row = DATA.info.find(p => p.id === id); if (row) row.diet = value;
+  renderInfo(); // re-render so the highlight reflects the new value immediately, not just after the next refresh
   write({ action: 'setDiet', id: id, value: value });
 }
 
