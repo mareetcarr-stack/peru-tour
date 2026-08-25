@@ -144,6 +144,14 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .tsep{border-left:2px solid var(--border2)}
 .cnt-row td{border-top:1px solid var(--border2);border-bottom:none;height:28px;font-size:10px;font-weight:600}
 .thdr{background:var(--bg3);padding:3px 2px}
+/* Tour/Tips price inputs used to sit right under the header name text, so
+   a longer tour name that wrapped onto more lines than its neighbours (e.g.
+   "Cooking Class Cusco TripAdeal" vs "Tips") pushed its price box down
+   further than the others — nothing lined up horizontally. Pinning the
+   input to the bottom of the header cell (whatever height that cell ends
+   up needing) keeps every price box on the same line regardless of how
+   many lines its own label wraps to. */
+.thdr-inner{display:flex;flex-direction:column;justify-content:flex-end;align-items:center;height:100%;gap:2px}
 .price-edit{width:38px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:4px;color:var(--dark-text);font-size:9px;padding:1px 2px;text-align:center;margin-top:2px;font-family:inherit;-moz-appearance:textfield}
 .price-edit::-webkit-outer-spin-button,.price-edit::-webkit-inner-spin-button{-webkit-appearance:none;margin:0}
 .ck{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;vertical-align:middle;background:transparent}
@@ -742,8 +750,8 @@ function renderTours() {
   thead.innerHTML = `<tr>
       <th class="lft" rowspan="2">Passenger</th>
       <th class="tsep" rowspan="2">Total</th><th rowspan="2">Paid</th>
-      <th class="tsep thdr" style="color:var(--green)">Tips<br><input class="price-edit" type="number" value="${tours.tipPrice}" onchange="setTipPrice(this.value)"></th>
-      ${defs.map((d, ti) => `<th colspan="2" class="tsep thdr${bandCls(ti)}">${esc(d.name)}<br><input class="price-edit" type="number" value="${d.price}" onchange="setTourPrice(${ti}, this.value)"></th>`).join('')}
+      <th class="tsep thdr" style="color:var(--green)"><div class="thdr-inner"><span>Tips</span><input class="price-edit" type="number" value="${tours.tipPrice}" onchange="setTipPrice(this.value)"></div></th>
+      ${defs.map((d, ti) => `<th colspan="2" class="tsep thdr${bandCls(ti)}"><div class="thdr-inner"><span>${esc(d.name)}</span><input class="price-edit" type="number" value="${d.price}" onchange="setTourPrice(${ti}, this.value)"></div></th>`).join('')}
     </tr>
     <tr>
       <th class="tsep"></th>
@@ -757,7 +765,7 @@ function renderTours() {
       <td class="nm">${esc(r.id)}. ${esc(r.name)}${r.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}</td>
       <td class="tsep">${rowTotalHtml_(r, tours)}</td>
       <td><div class="ck${r.paid ? ' y' : ''}" onclick="togglePaid('${r.id}', this)"></div></td>
-      <td><div class="ck amber${r.tip.currency ? ' y' : ''}" onclick="toggleTip('${r.id}', this)"></div></td>
+      <td class="tsep"><div class="ck amber${r.tip.currency ? ' y' : ''}" onclick="toggleTip('${r.id}', this)"></div></td>
       ${r.tours.map((t, ti) => `
         <td class="tsep ck-t${bandCls(ti)}"><div class="ck${t.t ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, this)"></div></td>
         <td class="ck-v${bandCls(ti)}"><div class="ck amber${t.v.currency ? ' y' : ''}" onclick="toggleValencia('${r.id}', ${ti}, this)"></div></td>
@@ -766,7 +774,7 @@ function renderTours() {
     <tr class="cnt-row">
       <td class="nm" style="font-size:9px;color:var(--text4)">Count</td>
       <td class="tsep"></td><td></td>
-      <td style="color:var(--amber)">${activeRows.filter(r => r.tip.currency).length || ''}</td>
+      <td class="tsep" style="color:var(--amber)">${activeRows.filter(r => r.tip.currency).length || ''}</td>
       ${defs.map((d, ti) => `
         <td class="tsep ck-t${bandCls(ti)}" style="color:var(--green)">${activeRows.filter(r => r.tours[ti].t).length || ''}</td>
         <td class="ck-v${bandCls(ti)}" style="color:var(--amber)">${activeRows.filter(r => r.tours[ti].v.currency).length || ''}</td>
