@@ -490,12 +490,40 @@ function getBoardingPassDocs_() {
   return files;
 }
 
+// Passport scans need to be shared with hotels repeatedly through the
+// trip, so they get the same "WhatsApp Share + Open" treatment as boarding
+// passes above. Same lookup-by-folder-name approach deliberately — Maree
+// drops the PDF(s) straight into "LATAM Passports" (a folder inside
+// Automations/latam-cloud, synced via Google Drive Desktop) under whatever
+// filename they happen to arrive with; every file in that folder is picked
+// up regardless of name, so nothing here ever depends on a specific
+// document name that could change.
+function getPassportDocs_() {
+  const it = DriveApp.getFoldersByName('LATAM Passports');
+  if (!it.hasNext()) return [];
+  const folder = it.next();
+  const files = listFolderFiles_(folder);
+  files.forEach((f) => {
+    try {
+      DriveApp.getFileById(f.id).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (e) {
+      // sharing change failed (rare) — file still appears, just may not
+      // be openable by the recipient until this is retried.
+    }
+  });
+  files.sort((a, b) => a.name.localeCompare(b.name));
+  return files;
+}
+
 function getDocuments_() {
   const root = DriveApp.getFolderById(DOCS_FOLDER_ID);
   const sections = [];
 
   const boardingPassFiles = getBoardingPassDocs_();
   if (boardingPassFiles.length) sections.push({ name: 'Boarding Passes', files: boardingPassFiles });
+
+  const passportFiles = getPassportDocs_();
+  if (passportFiles.length) sections.push({ name: 'Passports', files: passportFiles });
 
   const rootFiles = listFolderFiles_(root).filter((f) => EXCLUDED_DOC_IDS_.indexOf(f.id) === -1);
 
