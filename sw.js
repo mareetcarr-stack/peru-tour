@@ -1,7 +1,7 @@
 // Minimal service worker: cache the app shell so the lock screen still
 // opens offline. Live trip data always requires a network round-trip to
 // the Apps Script backend, so we deliberately do NOT cache API responses.
-const SHELL_CACHE = 'peru-tour-shell-v2';
+const SHELL_CACHE = 'peru-tour-shell-v3';
 const SHELL_FILES = [
   './',
   './index.html',
@@ -40,9 +40,16 @@ self.addEventListener('fetch', (event) => {
   // means a device can get stuck forever serving a stale, possibly-broken
   // config after a deploy, with no obvious way to tell. Only fall back to
   // the cached copy when actually offline.
+  //
+  // `cache: 'no-store'` is required here — GitHub Pages serves index.html
+  // with `Cache-Control: max-age=600`, and a plain fetch() still honours
+  // that via the browser's own HTTP cache even though this handler is
+  // "network-first" at the service-worker level. Without this, a deploy
+  // made within the last 10 minutes could still get silently served stale
+  // from the browser's HTTP cache instead of actually hitting the network.
   if (req.mode === 'navigate' || url.endsWith('/index.html') || url.endsWith('/')) {
     event.respondWith(
-      fetch(req).then((res) => {
+      fetch(req, { cache: 'no-store' }).then((res) => {
         caches.open(SHELL_CACHE).then((c) => c.put(req, res.clone()));
         return res;
       }).catch(() => caches.match(req))
