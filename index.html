@@ -543,10 +543,12 @@ function renderFlights() {
   // ASSUMPTION (same flight number as the group, not a confirmed date),
   // and needs manual verification. Shown as its own persistent amber
   // banner, separate from (and in addition to) the flight-delay alerts.
+  // DATA.arrivalAssumed is already a complete, human-readable sentence
+  // (built in sheet-runner.js) — rendered as-is, no extra wrapper text.
   const arrivalAssumedHtml = DATA.arrivalAssumed
     ? `<div class="alert-bar" style="background:var(--amber-bg);border-color:var(--amber-border)">
          <div class="alert-dot" style="background:var(--amber)"></div>
-         <div class="alert-text"><strong>Arrival date assumed</strong> (same flight number as the group, not confirmed from a dated column) for: ${esc(DATA.arrivalAssumed)} — please verify their actual arrival.</div>
+         <div class="alert-text">${esc(DATA.arrivalAssumed)}</div>
        </div>`
     : '';
 
@@ -903,7 +905,7 @@ function renderInfo() {
   list.innerHTML = info.map(p => {
     const hasBday = !!p.birthday;
     return `<div class="info-row${p.cancelled ? ' cancelled-row' : ''}"><div class="info-top"><div class="av">${esc(initials(p.name))}</div>
-      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}${p.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}</div></div>
+      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}${p.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}${p.age ? ` <span style="opacity:.6;font-weight:400">(${esc(p.age)})</span>` : ''}</div></div>
       <button class="bday-btn ${hasBday ? 'on' : 'off'}" onclick="togBday('${p.id}', this)">${hasBday ? '🎂 During tour!' : '🎂 Birthday?'}</button></div>
       <input class="diet-input" type="text" placeholder="Dietary requirements — tap to edit" value="${esc(p.diet)}" onchange="setDiet('${p.id}', this.value)">
       <div class="bday-area${hasBday ? ' open' : ''}"><span class="bday-lbl">Date:</span>
