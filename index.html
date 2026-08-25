@@ -141,7 +141,7 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .ttbl th.lft{text-align:left;padding-left:4px;position:sticky;left:0;background:var(--bg2);z-index:2}
 .ttbl td{height:34px;padding:0 3px;border-bottom:1px solid var(--border);text-align:center;vertical-align:middle;overflow:hidden}
 .ttbl td.nm{text-align:left;color:var(--text);font-size:11px;font-weight:600;white-space:normal;overflow-wrap:break-word;line-height:1.3;overflow:visible;padding-left:4px;padding-top:4px;padding-bottom:4px;position:sticky;left:0;background:var(--bg2);z-index:1;box-shadow:2px 0 3px -2px rgba(0,0,0,.15)}
-.tsep{border-left:1.5px solid var(--border)}
+.tsep{border-left:2px solid var(--border2)}
 .cnt-row td{border-top:1px solid var(--border2);border-bottom:none;height:28px;font-size:10px;font-weight:600}
 .thdr{background:var(--bg3);padding:3px 2px}
 .price-edit{width:38px;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:4px;color:var(--dark-text);font-size:9px;padding:1px 2px;text-align:center;margin-top:2px;font-family:inherit;-moz-appearance:textfield}
@@ -149,6 +149,20 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .ck{width:18px;height:18px;border-radius:4px;border:1.5px solid var(--border2);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;flex-shrink:0;vertical-align:middle;background:transparent}
 .ck.y{background:var(--green-bg);border-color:var(--green)}.ck.y::after{content:'✓';color:var(--green);font-size:9px}
 .ck.amber.y{background:var(--amber-bg);border-color:var(--amber)}.ck.amber.y::after{color:var(--amber)}
+/* Tours tab: each tour has a T (TripADeal) + V (Valencia) column pair, and
+   with several tours side by side it was hard to tell which pair of
+   checkboxes belongs to which tour heading, since an unchecked box looks
+   identical everywhere. These give every T/V cell a permanent, faint colour
+   tint matching its header label's colour (green for T, amber for V) —
+   visible whether checked or not — plus alternating shading per tour so
+   the boundary between one tour's pair and the next is obvious at a glance
+   even before you look at the header text.*/
+.ck-t{background:rgba(61,189,117,.07)}
+.ck-v{background:rgba(245,158,11,.07)}
+.tband-b.ck-t{background:rgba(61,189,117,.14)}
+.tband-b.ck-v{background:rgba(245,158,11,.14)}
+.thdr.tband-b{background:#272727}
+th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
 .row-total{font-size:10px;color:var(--text2);line-height:1.5;white-space:nowrap}
 .row-total b{color:var(--amber)}
 
@@ -720,15 +734,20 @@ function renderTours() {
     `<col style="width:56px">` +
     defs.map(() => `<col style="width:34px"><col style="width:34px">`).join('');
 
+  // Alternating "band" per tour (not per T/V) makes the boundary between
+  // one tour's column-pair and the next obvious even before reading the
+  // header text — see the .ck-t/.ck-v/.tband-b CSS comment above.
+  const bandCls = ti => ti % 2 === 1 ? ' tband-b' : '';
+
   thead.innerHTML = `<tr>
       <th class="lft" rowspan="2">Passenger</th>
       <th class="tsep" rowspan="2">Total</th><th rowspan="2">Paid</th>
       <th class="tsep thdr" style="color:var(--green)">Tips<br><input class="price-edit" type="number" value="${tours.tipPrice}" onchange="setTipPrice(this.value)"></th>
-      ${defs.map((d, ti) => `<th colspan="2" class="tsep thdr">${esc(d.name)}<br><input class="price-edit" type="number" value="${d.price}" onchange="setTourPrice(${ti}, this.value)"></th>`).join('')}
+      ${defs.map((d, ti) => `<th colspan="2" class="tsep thdr${bandCls(ti)}">${esc(d.name)}<br><input class="price-edit" type="number" value="${d.price}" onchange="setTourPrice(${ti}, this.value)"></th>`).join('')}
     </tr>
     <tr>
       <th class="tsep"></th>
-      ${defs.map(() => `<th class="tsep" style="color:var(--green);font-size:10px">T</th><th style="color:var(--amber);font-size:10px">V</th>`).join('')}
+      ${defs.map((d, ti) => `<th class="tsep ck-t${bandCls(ti)}" style="color:var(--green);font-size:10px">T</th><th class="ck-v${bandCls(ti)}" style="color:var(--amber);font-size:10px">V</th>`).join('')}
     </tr>`;
 
   const rows = tours.rows;
@@ -740,8 +759,8 @@ function renderTours() {
       <td><div class="ck${r.paid ? ' y' : ''}" onclick="togglePaid('${r.id}', this)"></div></td>
       <td><div class="ck amber${r.tip.currency ? ' y' : ''}" onclick="toggleTip('${r.id}', this)"></div></td>
       ${r.tours.map((t, ti) => `
-        <td class="tsep"><div class="ck${t.t ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, this)"></div></td>
-        <td><div class="ck amber${t.v.currency ? ' y' : ''}" onclick="toggleValencia('${r.id}', ${ti}, this)"></div></td>
+        <td class="tsep ck-t${bandCls(ti)}"><div class="ck${t.t ? ' y' : ''}" onclick="toggleTourTick('${r.id}', ${ti}, this)"></div></td>
+        <td class="ck-v${bandCls(ti)}"><div class="ck amber${t.v.currency ? ' y' : ''}" onclick="toggleValencia('${r.id}', ${ti}, this)"></div></td>
       `).join('')}
     </tr>`).join('') + `
     <tr class="cnt-row">
@@ -749,8 +768,8 @@ function renderTours() {
       <td class="tsep"></td><td></td>
       <td style="color:var(--amber)">${activeRows.filter(r => r.tip.currency).length || ''}</td>
       ${defs.map((d, ti) => `
-        <td class="tsep" style="color:var(--green)">${activeRows.filter(r => r.tours[ti].t).length || ''}</td>
-        <td style="color:var(--amber)">${activeRows.filter(r => r.tours[ti].v.currency).length || ''}</td>
+        <td class="tsep ck-t${bandCls(ti)}" style="color:var(--green)">${activeRows.filter(r => r.tours[ti].t).length || ''}</td>
+        <td class="ck-v${bandCls(ti)}" style="color:var(--amber)">${activeRows.filter(r => r.tours[ti].v.currency).length || ''}</td>
       `).join('')}
     </tr>`;
 
