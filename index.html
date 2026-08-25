@@ -337,6 +337,7 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
       <!-- INFO & DIET -->
       <div id="tab-info" style="display:none">
         <div class="sec-label">Info, diet &amp; birthdays</div>
+        <div class="wa-btn" style="justify-content:center;width:100%;margin-bottom:9px" onclick="shareDietWhatsApp()"><i class="ti ti-brand-whatsapp"></i>Share dietary requirements</div>
         <div id="info-list"><div class="empty-hint">Loading…</div></div>
       </div>
 
@@ -964,6 +965,44 @@ function setDiet(id, value) {
   const row = DATA.info.find(p => p.id === id); if (row) row.diet = value;
   renderInfo(); // re-render so the highlight reflects the new value immediately, not just after the next refresh
   write({ action: 'setDiet', id: id, value: value });
+}
+
+// Dietary requirements are recorded in the sheet in English (they're
+// transcribed there from whatever the passenger or the docx voucher said),
+// but the message Yenrri forwards to hotels/restaurants needs to read as
+// natural Peruvian Spanish. Best-effort translation for the phrasing seen
+// so far, falling back to the original English text (rather than a wrong
+// guess) for anything not recognised — same approach ticket-checker.js
+// uses for the reverse direction.
+const DIET_ES_MAP_ = [
+  { test: /gluten/i, es: 'Intolerante al gluten' },
+  { test: /onion.*ginger|ginger.*onion/i, es: 'Sin cebolla, sin kion' },
+  { test: /vegetarian/i, es: 'Vegetariano/a' },
+  { test: /^vegan$/i, es: 'Vegano/a' },
+  { test: /lactose/i, es: 'Intolerante a la lactosa' },
+  { test: /nut allerg|peanut/i, es: 'Alérgico/a a los frutos secos' },
+  { test: /shellfish/i, es: 'Alérgico/a a los mariscos' },
+  { test: /celiac|coeliac/i, es: 'Celíaco/a' },
+];
+function translateDietToSpanish_(text) {
+  // A diet note built up from more than one voucher (see ticket-checker.js)
+  // is joined with "; " — translate each part separately so a combined
+  // note doesn't just fall through untranslated as a whole.
+  return String(text).split(/;\s*/).map(part => {
+    const hit = DIET_ES_MAP_.find(e => e.test.test(part));
+    return hit ? hit.es : part;
+  }).join('; ');
+}
+function shareDietWhatsApp() {
+  if (!DATA) return;
+  const withDiet = (DATA.info || []).filter(p => !p.cancelled && p.diet && p.diet.trim());
+  if (!withDiet.length) {
+    alert('Ningún pasajero tiene restricciones alimentarias registradas todavía.');
+    return;
+  }
+  const lines = withDiet.map(p => `• ${p.name}: ${translateDietToSpanish_(p.diet.trim())}`);
+  const message = `Buenas, les compartimos las restricciones alimentarias de nuestro grupo:\n\n${lines.join('\n')}\n\nAgradecemos de antemano su atención. ¡Muchas gracias!`;
+  waShare(message);
 }
 
 // ─── PLACES ──────────────────────────────────────────────────────
