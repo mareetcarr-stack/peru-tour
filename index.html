@@ -1026,8 +1026,12 @@ function renderDocuments() {
   const docs = DATA.documents || { sections: [] };
   const list = document.getElementById('docs-list');
   if (!docs.sections || !docs.sections.length) { list.innerHTML = '<div class="empty-hint">No documents yet</div>'; return; }
+  // Both boarding passes and passport scans need to go straight to a
+  // hotel/restaurant contact over WhatsApp, repeatedly, throughout the
+  // trip — so both sections get the Share button, not just Boarding Passes.
+  const SHAREABLE_SECTIONS_ = ['Boarding Passes', 'Passports'];
   list.innerHTML = docs.sections.map((sec) => {
-    const isBoardingPasses = sec.name === 'Boarding Passes';
+    const isShareable = SHAREABLE_SECTIONS_.includes(sec.name);
     return `
     <div class="sec-label">${esc(sec.name)}</div>
     ${sec.files.length ? sec.files.map((f) => `
@@ -1036,7 +1040,7 @@ function renderDocuments() {
           <div class="rec-left" style="min-width:0"><i class="ti ${DOC_ICON[f.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
             <span class="rec-txt" style="color:var(--text);word-break:break-word;overflow-wrap:anywhere">${esc(f.name)}</span></div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
-            ${isBoardingPasses ? `<div class="wa-btn" onclick="waShare('${esc(f.url)}')"><i class="ti ti-brand-whatsapp"></i>Share</div>` : ''}
+            ${isShareable ? `<div class="wa-btn" onclick="waShare('${esc(f.url)}')"><i class="ti ti-brand-whatsapp"></i>Share</div>` : ''}
             <a href="${esc(f.url)}" target="_blank" rel="noopener" class="wa-btn" style="text-decoration:none"><i class="ti ti-external-link"></i>Open</a>
           </div>
         </div>
