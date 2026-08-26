@@ -15,6 +15,14 @@
 <style>
 /* ─── RESET & BASE ─────────────────────────────────────────────── */
 *{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+/* Safari's automatic text-size adjustment ("font boosting") silently
+   enlarges text in some blocks but not others based on its own heuristics
+   about column width/line count — this is exactly why passenger names
+   were rendering at visibly different font sizes from one row to the
+   next in landscape, despite every row sharing the same .pax-name rule.
+   Disabling it site-wide makes every element render at its authored
+   size, consistently, on every orientation. */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
 /* iOS Safari (incl. home-screen PWAs) has no Vibration API — there's no
    real haptic buzz available to a web app here. This is the closest
    substitute: an immediate, snappy visual "press" on every tappable
@@ -112,7 +120,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .sum-sub{color:var(--text);font-size:9px;margin-top:3px}
 .pax-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px;border:1px solid var(--border)}
 .av{width:32px;height:32px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:11px;font-weight:700;flex-shrink:0}
-.pax-name{color:var(--text);font-size:13px;font-weight:600;word-break:break-word;overflow-wrap:anywhere}
+/* overflow-wrap:anywhere previously let a surname break mid-word whenever
+   the row felt tight (e.g. "Hackenbe" / "rg" on 2 lines) — break-word only
+   splits a word as a last resort, when it truly can't fit on its own
+   line, so names wrap at the space between first/last name instead. */
+.pax-name{color:var(--text);font-size:13px;font-weight:600;overflow-wrap:break-word}
 .pax-detail{color:var(--text4);font-size:10px;margin-top:1px}
 .latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:8px;padding:3px 8px;color:var(--yellow);font-size:10px;text-decoration:none;margin-left:auto;flex-shrink:0;white-space:nowrap;font-weight:600}
 .latam-link i{font-size:12px}
