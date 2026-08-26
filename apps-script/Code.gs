@@ -498,15 +498,25 @@ function getBoardingPassDocs_() {
 // Boarding passes normally get cleared out automatically the next time a
 // full batch is regenerated (boarding-pass-runner.js does that itself
 // before writing new ones) — but Yenrri sometimes wants a specific one
-// gone sooner than that, e.g. after spotting a mistake. Deliberately only
-// ever trashes a file that's actually inside "LATAM Boarding Passes" —
-// the id comes from the client, so this re-checks it against the real
-// folder contents rather than trusting it blindly, which means this
+// gone sooner than that, e.g. after spotting a mistake. Passports have NO
+// equivalent auto-clear at all — ticket-checker.js only ever adds a new
+// one (numbering it Passports-2.pdf, -3.pdf... on a name collision), so
+// without a delete option old scans would just accumulate in the Docs tab
+// forever. Both kinds are handled by the same function, keyed by a fixed
+// kind→folder map — the folder name is NEVER taken from the client, only
+// picked from this map, and the id is re-checked against that folder's
+// real contents rather than trusted blindly. That combination means this
 // can't be repurposed (by mistake or otherwise) to delete some other
 // document elsewhere in Drive.
-function deleteBoardingPassDoc_(id) {
-  const it = DriveApp.getFoldersByName('LATAM Boarding Passes');
-  if (!it.hasNext()) throw new Error('LATAM Boarding Passes folder not found.');
+const DELETABLE_DOC_FOLDERS_ = {
+  boardingPass: 'LATAM Boarding Passes',
+  passport: 'LATAM Passports',
+};
+function deleteDriveDoc_(id, kind) {
+  const folderName = DELETABLE_DOC_FOLDERS_[kind];
+  if (!folderName) throw new Error('Unknown document kind: ' + kind);
+  const it = DriveApp.getFoldersByName(folderName);
+  if (!it.hasNext()) throw new Error(folderName + ' folder not found.');
   const folder = it.next();
   const files = folder.getFiles();
   while (files.hasNext()) {
@@ -516,7 +526,7 @@ function deleteBoardingPassDoc_(id) {
       return { id: id, deleted: true };
     }
   }
-  throw new Error('That file was not found in LATAM Boarding Passes — refusing to delete it.');
+  throw new Error('That file was not found in ' + folderName + ' — refusing to delete it.');
 }
 
 // Passport scans need to be shared with hotels repeatedly through the
@@ -995,7 +1005,7 @@ function handleWrite_(body) {
     case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
     case 'deleteReceipt': return deleteReceipt_(body.row);
-    case 'deleteBoardingPass': return deleteBoardingPassDoc_(body.id);
+    case 'deleteDriveDoc': return deleteDriveDoc_(body.id, body.kind);
     case 'requestSunatRun': return requestSunatRun_();
     case 'requestBoardingPassRun': return requestBoardingPassRun_();
     case 'requestTicketCheckRun': return requestTicketCheckRun_();
