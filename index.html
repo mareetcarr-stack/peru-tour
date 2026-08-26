@@ -1035,7 +1035,13 @@ function renderDocuments() {
   // Briefing docs sit there too and aren't meant to be shared the same way.
   const SHAREABLE_SECTIONS_ = ['Boarding Passes', 'Passports'];
   const isShareableFile = (sec, f) => SHAREABLE_SECTIONS_.includes(sec.name) || /recommendations/i.test(f.name);
+  // Boarding passes normally clear themselves out the next time a full
+  // batch is regenerated, but Yenrri sometimes needs one gone sooner than
+  // that (e.g. spotted a mistake) — this deletes it from Drive right away
+  // rather than waiting.
+  const DELETABLE_SECTIONS_ = ['Boarding Passes'];
   list.innerHTML = docs.sections.map((sec) => {
+    const isDeletableSection = DELETABLE_SECTIONS_.includes(sec.name);
     return `
     <div class="sec-label">${esc(sec.name)}</div>
     ${sec.files.length ? sec.files.map((f) => `
@@ -1044,6 +1050,7 @@ function renderDocuments() {
           <div class="rec-left" style="min-width:0"><i class="ti ${DOC_ICON[f.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
             <span class="rec-txt" style="color:var(--text);word-break:break-word;overflow-wrap:anywhere">${esc(f.name)}</span></div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
+            ${isDeletableSection ? `<div class="wa-btn" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)" title="Delete from Google Drive" onclick="deleteDocument('${esc(f.id)}','${jsStrLit_(f.name)}')"><i class="ti ti-trash"></i></div>` : ''}
             ${isShareableFile(sec, f) ? `<div class="wa-btn" onclick="waShare('${esc(f.url)}')"><i class="ti ti-brand-whatsapp"></i>Share</div>` : ''}
             <a href="${esc(f.url)}" target="_blank" rel="noopener" class="wa-btn" style="text-decoration:none"><i class="ti ti-external-link"></i>Open</a>
           </div>
@@ -1051,6 +1058,17 @@ function renderDocuments() {
       </div>`).join('') : '<div class="empty-hint">Empty</div>'}
   `;
   }).join('');
+}
+
+// Trashes a boarding-pass PDF in Drive on request, rather than waiting for
+// the next full regeneration to clear it out. Code.gs only ever allows
+// this for files actually inside "LATAM Boarding Passes" — never trusts
+// the id alone — so this can't be repurposed to delete some other document.
+function deleteDocument(id, name) {
+  if (!confirm(`Delete "${name}"?\n\nThis removes it from Google Drive (and everyone's Docs tab) right away, rather than waiting for the next boarding-pass run.`)) return;
+  (DATA.documents.sections || []).forEach(sec => { sec.files = (sec.files || []).filter(f => f.id !== id); });
+  renderDocuments();
+  write({ action: 'deleteBoardingPass', id: id });
 }
 
 // ─── RECEIPTS (editable — dropdowns mirror the Sheet's own validation) ──
