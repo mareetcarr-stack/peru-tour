@@ -458,10 +458,10 @@ function listFolderFiles_(folder) {
 // that isn't found as a child of that folder, so a doc can be added here
 // regardless of where it actually sits in Drive.
 const TOP_DOC_ORDER_ = [
-  '1TGaOAj1h3jJU-jxa5s4wjnbfXB9hzbDp9jZ9B6Mhe-s', // Recommendations for Peru
-  '196wurKBKoG-i6UG6x--fhxqIBBoKxkcuVHNu_GHH4d4', // Briefing (was "A 2 Briefing")
   '1rVzAqg6ezKoSDYkJRvUi1eccdq5T4zper6R5pC7Vpfw', // 11-Day Tour Recommendations for Peru
-  '1sz_LpQy1q_3ec_oR3w3ZOKIx2fWtEVSAgdZJHUXWbhw', // (title read at runtime — not publicly accessible to confirm here)
+  '1TGaOAj1h3jJU-jxa5s4wjnbfXB9hzbDp9jZ9B6Mhe-s', // 13-Day Tour Recommendations for Peru (was "Recommendations for Peru")
+  '1sz_LpQy1q_3ec_oR3w3ZOKIx2fWtEVSAgdZJHUXWbhw', // Briefing (current) — replaces the old Briefing doc below, which was moved to Trash
+  // '196wurKBKoG-i6UG6x--fhxqIBBoKxkcuVHNu_GHH4d4', // OLD Briefing (was "A 2 Briefing") — now in Trash, removed from this list
 ];
 const EXCLUDED_DOC_IDS_ = [
   '1Zilb4HarBOgqC2YBQubscLTH-0jdkfXXtfp8O7opTp4', // Andean Wings Sotupa Eco Lodge Menu Selection
@@ -533,13 +533,16 @@ function getDocuments_() {
 
   // Key Documents don't have to live inside the TripADeal folder — fall
   // back to fetching by ID directly for any entry not found as a child of
-  // it. A doc this account can't access (wrong ID, no sharing) is skipped
-  // rather than breaking the whole Docs tab.
+  // it. A doc this account can't access (wrong ID, no sharing), or that's
+  // been moved to Trash (Drive keeps a trashed file's ID resolvable for a
+  // while, it doesn't just disappear — getFileById would otherwise still
+  // return it here), is skipped rather than breaking the whole Docs tab.
   const topFiles = TOP_DOC_ORDER_.map((id) => {
     const found = rootFiles.find((f) => f.id === id);
     if (found) return found;
     try {
       const f = DriveApp.getFileById(id);
+      if (f.isTrashed()) return null;
       return { id: id, name: f.getName(), url: f.getUrl(), type: docType_(f.getMimeType()), updated: f.getLastUpdated().getTime() };
     } catch (e) {
       return null;
