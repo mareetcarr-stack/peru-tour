@@ -118,15 +118,20 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .sum-n{color:var(--text);font-size:22px;font-weight:700}
 .sum-l{color:var(--text);font-size:10px;margin-top:2px}
 .sum-sub{color:var(--text);font-size:9px;margin-top:3px}
-.pax-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;display:flex;align-items:center;gap:10px;border:1px solid var(--border)}
+/* Name used to share one flex row with the Check-in link, status pill, and
+   cancel button — on a phone that left so little room for the name column
+   that even a single word like "Hackenberg" had nowhere to go but break
+   mid-word, no matter how the wrap CSS was set. Splitting into two rows
+   (name+checkbox on top, action buttons on their own row below) gives the
+   name the row's FULL width, so it only wraps (cleanly, between words) on
+   genuinely very long names, never fragments a single word. */
+.pax-row{background:var(--bg2);border-radius:11px;padding:10px 12px;margin-bottom:7px;border:1px solid var(--border)}
+.pax-top{display:flex;align-items:center;gap:10px}
+.pax-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
 .av{width:32px;height:32px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:11px;font-weight:700;flex-shrink:0}
-/* overflow-wrap:anywhere previously let a surname break mid-word whenever
-   the row felt tight (e.g. "Hackenbe" / "rg" on 2 lines) — break-word only
-   splits a word as a last resort, when it truly can't fit on its own
-   line, so names wrap at the space between first/last name instead. */
 .pax-name{color:var(--text);font-size:13px;font-weight:600;overflow-wrap:break-word}
 .pax-detail{color:var(--text4);font-size:10px;margin-top:1px}
-.latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:8px;padding:3px 8px;color:var(--yellow);font-size:10px;text-decoration:none;margin-left:auto;flex-shrink:0;white-space:nowrap;font-weight:600}
+.latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:8px;padding:3px 8px;color:var(--yellow);font-size:10px;text-decoration:none;flex-shrink:0;white-space:nowrap;font-weight:600}
 .latam-link i{font-size:12px}
 .arr-ck{flex-shrink:0}
 .pax-col-hdr{display:flex;padding:0 12px 5px}
@@ -644,9 +649,13 @@ function renderPassengers() {
     const isYenrri = p.id === '0';
     if (p.cancelled) {
       return `<div class="pax-row">
-        <div class="ck arr-ck" style="visibility:hidden"></div>
-        <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)} <span class="pill r">Cancelled</span></div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
-        <div class="wa-btn" onclick="toggleCancelled('${p.id}', true)"><i class="ti ti-rotate"></i>Reinstate</div>
+        <div class="pax-top">
+          <div class="ck arr-ck" style="visibility:hidden"></div>
+          <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)} <span class="pill r">Cancelled</span></div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
+        </div>
+        <div class="pax-actions">
+          <div class="wa-btn" onclick="toggleCancelled('${p.id}', true)"><i class="ti ti-rotate"></i>Reinstate</div>
+        </div>
       </div>`;
     }
     const ok = /downloaded/i.test(p.boardingStatus);
@@ -654,15 +663,19 @@ function renderPassengers() {
     const pillClass = ok ? 'g' : failed ? 'r' : 'a';
     const pillTxt = shortStatus(p.boardingStatus);
     return `<div class="pax-row">
-      ${isYenrri
-        ? '<div class="ck arr-ck" style="visibility:hidden"></div>'
-        : `<div class="ck arr-ck${p.arrived ? ' y' : ''}" title="Arrived at airport" onclick="toggleArrived('${p.id}', this)"></div>`}
-      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
-      ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
-      <span class="pill ${pillClass}" style="margin-left:${p.checkinLink ? '6px' : 'auto'}">${esc(pillTxt)}</span>
-      ${!isYenrri
-        ? `<div class="wa-btn" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);margin-left:6px" title="Mark as cancelled" onclick="toggleCancelled('${p.id}', false)"><i class="ti ti-user-x"></i></div>`
-        : `<div class="wa-btn" style="visibility:hidden;margin-left:6px"><i class="ti ti-user-x"></i></div>`}
+      <div class="pax-top">
+        ${isYenrri
+          ? '<div class="ck arr-ck" style="visibility:hidden"></div>'
+          : `<div class="ck arr-ck${p.arrived ? ' y' : ''}" title="Arrived at airport" onclick="toggleArrived('${p.id}', this)"></div>`}
+        <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
+      </div>
+      <div class="pax-actions">
+        ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
+        <span class="pill ${pillClass}">${esc(pillTxt)}</span>
+        ${!isYenrri
+          ? `<div class="wa-btn" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)" title="Mark as cancelled" onclick="toggleCancelled('${p.id}', false)"><i class="ti ti-user-x"></i></div>`
+          : `<div class="wa-btn" style="visibility:hidden"><i class="ti ti-user-x"></i></div>`}
+      </div>
     </div>`;
   }).join('');
 }
