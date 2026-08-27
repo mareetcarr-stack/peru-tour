@@ -353,8 +353,9 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
 
       <!-- INFO & DIET -->
       <div id="tab-info" style="display:none">
-        <div class="sec-label">Info, diet &amp; birthdays</div>
-        <div class="wa-btn" style="justify-content:center;width:100%;margin-bottom:9px" onclick="shareDietWhatsApp()"><i class="ti ti-brand-whatsapp"></i>Share dietary requirements</div>
+        <div class="sec-label">Reservations</div>
+        <div id="reservations-list"><div class="empty-hint">Loading…</div></div>
+        <div class="sec-label" style="margin-top:16px">Info, diet &amp; birthdays</div>
         <div id="info-list"><div class="empty-hint">Loading…</div></div>
       </div>
 
@@ -515,7 +516,7 @@ function loadData() {
   return apiGet({ action: 'data' }).then((res) => {
     if (!res.ok) throw new Error(res.error);
     DATA = res.data;
-    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderPlaces(); renderReceipts(); renderSunatCard(); renderBoardingPassCard(); renderTicketCheckCard(); renderFlightScheduleCard(); renderSheetImportCard(); renderDocuments(); renderWise();
+    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderReservations(); renderPlaces(); renderReceipts(); renderSunatCard(); renderBoardingPassCard(); renderTicketCheckCard(); renderFlightScheduleCard(); renderSheetImportCard(); renderDocuments(); renderWise();
   }).catch((err) => { console.error('loadData failed', err); });
 }
 
@@ -992,42 +993,37 @@ function setDiet(id, value) {
   write({ action: 'setDiet', id: id, value: value });
 }
 
-// Dietary requirements are recorded in the sheet in English (they're
-// transcribed there from whatever the passenger or the docx voucher said),
-// but the message Yenrri forwards to hotels/restaurants needs to read as
-// natural Peruvian Spanish. Best-effort translation for the phrasing seen
-// so far, falling back to the original English text (rather than a wrong
-// guess) for anything not recognised — same approach ticket-checker.js
-// uses for the reverse direction.
-const DIET_ES_MAP_ = [
-  { test: /gluten/i, es: 'Intolerante al gluten' },
-  { test: /onion.*ginger|ginger.*onion/i, es: 'No cebolla, no kion' },
-  { test: /vegetarian/i, es: 'Vegetariano/a' },
-  { test: /^vegan$/i, es: 'Vegano/a' },
-  { test: /lactose/i, es: 'Intolerante a la lactosa' },
-  { test: /nut allerg|peanut/i, es: 'Alérgico/a a los frutos secos' },
-  { test: /shellfish/i, es: 'Alérgico/a a los mariscos' },
-  { test: /celiac|coeliac/i, es: 'Celíaco/a' },
-];
-function translateDietToSpanish_(text) {
-  // A diet note built up from more than one voucher (see ticket-checker.js)
-  // is joined with "; " — translate each part separately so a combined
-  // note doesn't just fall through untranslated as a whole.
-  return String(text).split(/;\s*/).map(part => {
-    const hit = DIET_ES_MAP_.find(e => e.test.test(part));
-    return hit ? hit.es : part;
-  }).join('; ');
-}
-function shareDietWhatsApp() {
+// ─── RESERVATIONS (hotel/restaurant reconfirmation messages) ───────────
+// One card per hotel stay / restaurant mention parsed out of the agency's
+// Travel Plan .docx (see ticket-checker.js's processTravelPlans) — each
+// with a ready-to-edit WhatsApp message in Spanish, so Yenrri can just
+// tap Share instead of composing a reconfirmation from scratch for every
+// supplier. Restaurant messages already have the group's current dietary
+// requirements baked in server-side — this replaced the old standalone
+// "Share dietary requirements" button, since every restaurant message
+// covers that same information plus the booking details.
+const RES_ICON_ = { Hotel: 'ti-building', Restaurant: 'ti-tools-kitchen-2' };
+function renderReservations() {
   if (!DATA) return;
-  const withDiet = (DATA.info || []).filter(p => !p.cancelled && p.diet && p.diet.trim());
-  if (!withDiet.length) {
-    alert('Ningún pasajero tiene restricciones alimentarias registradas todavía.');
-    return;
-  }
-  const lines = withDiet.map(p => `• ${p.name}: ${translateDietToSpanish_(p.diet.trim())}`);
-  const message = `Buenas, les compartimos las restricciones alimentarias de nuestro grupo:\n\n${lines.join('\n')}\n\nAgradecemos de antemano su atención. ¡Muchas gracias!`;
-  waShare(message);
+  const list = document.getElementById('reservations-list');
+  const rows = DATA.reservations || [];
+  if (!rows.length) { list.innerHTML = '<div class="empty-hint">No reservations yet — upload the tour\'s Travel Plan to document-inbox and run Check Tickets</div>'; return; }
+  list.innerHTML = rows.map(r => `
+    <div class="rec-card">
+      <div class="rec-lnk" style="border-bottom:none;padding-bottom:0;flex-direction:column;align-items:stretch;gap:8px">
+        <div class="rec-left" style="min-width:0"><i class="ti ${RES_ICON_[r.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
+          <span class="rec-txt" style="color:var(--text)">${esc(r.name)} <span style="opacity:.6;font-weight:400">· ${esc(r.dateInfo)}</span></span></div>
+        <textarea id="res-msg-${r.row}" class="diet-input" style="min-height:110px;resize:vertical;font-family:inherit;line-height:1.4" onchange="setReservationMessage(${r.row}, this.value)">${esc(r.message)}</textarea>
+        <div style="display:flex;justify-content:flex-end">
+          <div class="wa-btn" onclick="waShare(document.getElementById('res-msg-${r.row}').value)"><i class="ti ti-brand-whatsapp"></i>Share</div>
+        </div>
+      </div>
+    </div>`).join('');
+}
+function setReservationMessage(row, value) {
+  const r = (DATA.reservations || []).find(x => x.row === row);
+  if (r) r.message = value;
+  write({ action: 'setReservationMessage', row: row, value: value });
 }
 
 // ─── PLACES ──────────────────────────────────────────────────────

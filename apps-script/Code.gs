@@ -48,6 +48,7 @@ const SHEET_NAMES = {
   ticketcheck: 'TICKETCHECK_TRIGGER',
   flightschedule: 'FLIGHTSCHEDULE_TRIGGER',
   sheetimport: 'SHEETIMPORT_TRIGGER',
+  reservations: 'RESERVATIONS',
 };
 
 // The "TripADeal" Drive folder (Daily Itineraries, Tour Leader Reports,
@@ -186,6 +187,7 @@ function getAllData_() {
     documents: getDocuments_(),
     wise: getWiseInfo_(),
     arrivalAssumed: getArrivalAssumedNames_(),
+    reservations: getReservations_(),
   };
 }
 
@@ -1004,6 +1006,7 @@ function handleWrite_(body) {
     case 'setDiet': return setDiet_(body.id, body.value);
     case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
+    case 'setReservationMessage': return setReservationMessage_(body.row, body.value);
     case 'deleteReceipt': return deleteReceipt_(body.row);
     case 'deleteDriveDoc': return deleteDriveDoc_(body.id, body.kind);
     case 'requestSunatRun': return requestSunatRun_();
@@ -1151,4 +1154,37 @@ function deleteReceipt_(row) {
   if (row < 2) throw new Error('Refusing to clear the header row');
   sh.getRange(row, 1, 1, 5).setValue('');
   return { row: row };
+}
+
+// RESERVATIONS is written by ticket-checker.js (parsing the agency's
+// Travel Plan .docx) rather than created ahead of time here, so it may
+// not exist yet on a trip that hasn't had one imported — return an empty
+// list rather than the throwing sheet_() helper in that case, so a
+// missing tab doesn't break the whole Docs/Info tab data load.
+function getReservations_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(SHEET_NAMES.reservations);
+  if (!sh) return [];
+  const rows = sh.getDataRange().getValues();
+  const out = [];
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    if (!row[1]) continue; // no name → blank row
+    out.push({
+      row: r + 1,
+      type: String(row[0] || '').trim(),
+      name: String(row[1] || '').trim(),
+      dateInfo: String(row[2] || '').trim(),
+      message: String(row[3] || ''),
+    });
+  }
+  return out;
+}
+
+function setReservationMessage_(row, value) {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(SHEET_NAMES.reservations);
+  if (!sh) throw new Error('RESERVATIONS sheet not found.');
+  sh.getRange(row, 4).setValue(value); // col D = Message
+  return { row: row, value: value };
 }
