@@ -587,11 +587,18 @@ function getDocuments_() {
   }).filter(Boolean);
   if (topFiles.length) sections.push({ name: 'Key Documents', files: topFiles });
 
+  // Any subfolder Maree creates directly inside the TripADeal folder shows
+  // up automatically as its own section — this is how the two daily
+  // itinerary folders ("Peru & The Caribbean", "Ultimate South America
+  // Adventure") get picked up, no code change needed per folder. Marked
+  // collapsible so the app can show these collapsed by default — a folder
+  // full of day-by-day itinerary files would otherwise dump a long list
+  // straight onto the Docs tab.
   const subfolderSections = [];
   const subfolders = root.getFolders();
   while (subfolders.hasNext()) {
     const sub = subfolders.next();
-    subfolderSections.push({ name: sub.getName(), files: listFolderFiles_(sub) });
+    subfolderSections.push({ name: sub.getName(), files: listFolderFiles_(sub), collapsible: true });
   }
   subfolderSections.sort((a, b) => a.name.localeCompare(b.name));
   sections.push.apply(sections, subfolderSections);

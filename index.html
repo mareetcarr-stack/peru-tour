@@ -1067,11 +1067,9 @@ function renderDocuments() {
   // option old scans would accumulate in the Docs tab forever. Both get a
   // delete button so either can be removed sooner than that if needed.
   const DELETABLE_SECTIONS_ = { 'Boarding Passes': 'boardingPass', 'Passports': 'passport' };
-  list.innerHTML = docs.sections.map((sec) => {
+  const filesHtml = (sec) => sec.files.length ? sec.files.map((f) => {
     const deleteKind = DELETABLE_SECTIONS_[sec.name];
     return `
-    <div class="sec-label">${esc(sec.name)}</div>
-    ${sec.files.length ? sec.files.map((f) => `
       <div class="rec-card">
         <div class="rec-lnk" style="border-bottom:none;padding-bottom:0;flex-direction:column;align-items:stretch;gap:8px">
           <div class="rec-left" style="min-width:0"><i class="ti ${DOC_ICON[f.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
@@ -1082,7 +1080,33 @@ function renderDocuments() {
             <a href="${esc(f.url)}" target="_blank" rel="noopener" class="wa-btn" style="text-decoration:none"><i class="ti ti-external-link"></i>Open</a>
           </div>
         </div>
-      </div>`).join('') : '<div class="empty-hint">Empty</div>'}
+      </div>`;
+  }).join('') : '<div class="empty-hint">Empty</div>';
+
+  // Folders Maree creates directly in Drive (see Code.gs's getDocuments_)
+  // show up as their own section automatically — e.g. one per tour's
+  // day-by-day itinerary set. Marked collapsible there since a folder full
+  // of daily itinerary files would otherwise dump a long list straight
+  // onto the tab; tapping the header reveals it instead (same
+  // expand/collapse interaction as the Tickets tab).
+  list.innerHTML = docs.sections.map((sec) => {
+    if (sec.collapsible) {
+      return `
+      <div class="tkt-sec">
+        <div class="tkt-hdr" onclick="toggleTicketSection(this)">
+          <div class="tkt-top">
+            <span class="tkt-title">${esc(sec.name)}</span>
+            <div class="tkt-meta">
+              <span class="tkt-badge">${sec.files.length}</span>
+              <i class="ti ti-chevron-down tkt-chev"></i></div>
+          </div>
+        </div>
+        <div class="tkt-body" style="padding:10px 0 0">${filesHtml(sec)}</div>
+      </div>`;
+    }
+    return `
+    <div class="sec-label">${esc(sec.name)}</div>
+    ${filesHtml(sec)}
   `;
   }).join('');
 }
