@@ -431,14 +431,21 @@ function naturalKey_(name) {
   return m ? parseInt(m[1], 10) : Number.MAX_SAFE_INTEGER;
 }
 
-function listFolderFiles_(folder) {
+// skipImages defaults to true for the historical reason noted below (the
+// Wise QR code image living loose in the TripADeal root) — subfolders
+// Maree creates herself (e.g. a tour's daily itinerary set) pass false,
+// since those may well be genuine documents saved as photos/screenshots
+// rather than PDFs, and silently hiding them would just look like an
+// empty folder.
+function listFolderFiles_(folder, skipImages) {
+  if (skipImages === undefined) skipImages = true;
   const tripSheetId = SpreadsheetApp.getActiveSpreadsheet().getId();
   const out = [];
   const it = folder.getFiles();
   while (it.hasNext()) {
     const f = it.next();
     if (f.getId() === tripSheetId) continue; // the trip Sheet lives in this folder too — already in the app
-    if (/^image\//.test(f.getMimeType())) continue; // e.g. the Wise QR code — not a document to browse/edit
+    if (skipImages && /^image\//.test(f.getMimeType())) continue; // e.g. the Wise QR code — not a document to browse/edit
     out.push({
       id: f.getId(),
       name: f.getName(),
@@ -594,11 +601,22 @@ function getDocuments_() {
   // collapsible so the app can show these collapsed by default — a folder
   // full of day-by-day itinerary files would otherwise dump a long list
   // straight onto the Docs tab.
+  // "Tour Leader Reports" used to be loose files in the root folder,
+  // shown flattened like Key Documents/Other documents — Maree later
+  // organised them into their own Drive folder for her own tidiness, but
+  // still wants them displayed the old way (always visible, not behind a
+  // tap), so it's excluded from the generic collapsible treatment below.
+  const FLATTENED_SUBFOLDER_NAMES_ = ['tour leader reports'];
   const subfolderSections = [];
   const subfolders = root.getFolders();
   while (subfolders.hasNext()) {
     const sub = subfolders.next();
-    subfolderSections.push({ name: sub.getName(), files: listFolderFiles_(sub), collapsible: true });
+    const isFlattened = FLATTENED_SUBFOLDER_NAMES_.indexOf(sub.getName().toLowerCase()) !== -1;
+    subfolderSections.push({
+      name: sub.getName(),
+      files: listFolderFiles_(sub, false),
+      collapsible: !isFlattened,
+    });
   }
   subfolderSections.sort((a, b) => a.name.localeCompare(b.name));
   sections.push.apply(sections, subfolderSections);
