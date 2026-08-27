@@ -1006,7 +1006,6 @@ function handleWrite_(body) {
     case 'setDiet': return setDiet_(body.id, body.value);
     case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
-    case 'setReservationMessage': return setReservationMessage_(body.row, body.value);
     case 'deleteReceipt': return deleteReceipt_(body.row);
     case 'deleteDriveDoc': return deleteDriveDoc_(body.id, body.kind);
     case 'requestSunatRun': return requestSunatRun_();
@@ -1181,10 +1180,3 @@ function getReservations_() {
   return out;
 }
 
-function setReservationMessage_(row, value) {
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const sh = ss.getSheetByName(SHEET_NAMES.reservations);
-  if (!sh) throw new Error('RESERVATIONS sheet not found.');
-  sh.getRange(row, 4).setValue(value); // col D = Message
-  return { row: row, value: value };
-}

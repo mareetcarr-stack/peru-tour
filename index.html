@@ -996,12 +996,15 @@ function setDiet(id, value) {
 // ─── RESERVATIONS (hotel/restaurant reconfirmation messages) ───────────
 // One card per hotel stay / restaurant mention parsed out of the agency's
 // Travel Plan .docx (see ticket-checker.js's processTravelPlans) — each
-// with a ready-to-edit WhatsApp message in Spanish, so Yenrri can just
+// with a ready-to-send WhatsApp message in Spanish, so Yenrri can just
 // tap Share instead of composing a reconfirmation from scratch for every
 // supplier. Restaurant messages already have the group's current dietary
 // requirements baked in server-side — this replaced the old standalone
 // "Share dietary requirements" button, since every restaurant message
 // covers that same information plus the booking details.
+// Deliberately NOT editable here — any tweak happens in the WhatsApp
+// draft itself once shared, rather than doubling up on an edit surface
+// (and saving the vertical space a textarea would take).
 const RES_ICON_ = { Hotel: 'ti-building', Restaurant: 'ti-tools-kitchen-2' };
 function renderReservations() {
   if (!DATA) return;
@@ -1013,17 +1016,9 @@ function renderReservations() {
       <div class="rec-lnk" style="border-bottom:none;padding-bottom:0;flex-direction:column;align-items:stretch;gap:8px">
         <div class="rec-left" style="min-width:0"><i class="ti ${RES_ICON_[r.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
           <span class="rec-txt" style="color:var(--text)">${esc(r.name)} <span style="opacity:.6;font-weight:400">· ${esc(r.dateInfo)}</span></span></div>
-        <textarea id="res-msg-${r.row}" class="diet-input" style="min-height:110px;resize:vertical;font-family:inherit;line-height:1.4" onchange="setReservationMessage(${r.row}, this.value)">${esc(r.message)}</textarea>
-        <div style="display:flex;justify-content:flex-end">
-          <div class="wa-btn" onclick="waShare(document.getElementById('res-msg-${r.row}').value)"><i class="ti ti-brand-whatsapp"></i>Share</div>
-        </div>
+        <div class="wa-btn" onclick="waShare('${jsStrLit_(r.message)}')" style="justify-content:center;width:100%"><i class="ti ti-brand-whatsapp"></i>Share</div>
       </div>
     </div>`).join('');
-}
-function setReservationMessage(row, value) {
-  const r = (DATA.reservations || []).find(x => x.row === row);
-  if (r) r.message = value;
-  write({ action: 'setReservationMessage', row: row, value: value });
 }
 
 // ─── PLACES ──────────────────────────────────────────────────────
