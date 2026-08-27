@@ -617,6 +617,16 @@ function getDocuments_() {
   const FLATTENED_SUBFOLDER_NAMES_ = ['tour leader reports'];
   const NESTED_SUBFOLDER_NAMES_ = ['daily itineraries'];
   const subfolderSections = [];
+  // "Daily Itineraries" itself doesn't get a section of its own — Maree
+  // wants the two tour folders inside it ("Peru & The Caribbean",
+  // "Ultimate South America Adventure") displayed directly, each as its
+  // own normal collapsible section, with just a plain heading above them
+  // (the same "isHeading"-only style every other section's label already
+  // uses) rather than nesting them inside one big collapsible folder.
+  // Built and pinned to the very front separately from the alphabetical
+  // sort below, so the heading and its two folders always stay together
+  // in that order and don't get scattered by name.
+  const nestedFirst = [];
   const subfolders = root.getFolders();
   while (subfolders.hasNext()) {
     const sub = subfolders.next();
@@ -631,7 +641,8 @@ function getDocuments_() {
         groups.push({ name: g.getName(), files: listFolderFiles_(g, false) });
       }
       groups.sort((a, b) => a.name.localeCompare(b.name));
-      subfolderSections.push({ name: sub.getName(), groups: groups, collapsible: true, highlight: true });
+      nestedFirst.push({ name: sub.getName(), isHeading: true });
+      groups.forEach((g) => nestedFirst.push({ name: g.name, files: g.files, collapsible: true }));
       continue;
     }
     subfolderSections.push({
@@ -640,10 +651,8 @@ function getDocuments_() {
       collapsible: !isFlattened,
     });
   }
-  // Highlighted sections (Daily Itineraries) sort first among the
-  // subfolders — being visually distinct doesn't help if it's still
-  // buried a few screens down, alphabetically after everything else.
-  subfolderSections.sort((a, b) => (b.highlight ? 1 : 0) - (a.highlight ? 1 : 0) || a.name.localeCompare(b.name));
+  subfolderSections.sort((a, b) => a.name.localeCompare(b.name));
+  sections.push.apply(sections, nestedFirst);
   sections.push.apply(sections, subfolderSections);
 
   const otherRootFiles = rootFiles.filter((f) => TOP_DOC_ORDER_.indexOf(f.id) === -1);

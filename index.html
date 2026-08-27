@@ -210,11 +210,6 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
 
 /* tickets */
 .tkt-sec{background:var(--bg2);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden}
-/* Daily Itineraries otherwise looks identical to every other plain
-   subfolder section and is easy to scroll straight past — a coloured
-   border + icon (added inline, see renderDocuments) makes it stand out
-   from the rest of the Docs tab at a glance. */
-.tkt-sec-hl{border-color:var(--red);border-width:1.5px}
 .tkt-hdr{display:flex;flex-direction:column;gap:3px;padding:11px 13px;cursor:pointer;user-select:none}
 .tkt-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .tkt-title{color:var(--text);font-size:13px;font-weight:600}
@@ -1094,30 +1089,14 @@ function renderDocuments() {
   // of daily itinerary files would otherwise dump a long list straight
   // onto the tab; tapping the header reveals it instead (same
   // expand/collapse interaction as the Tickets tab). "Daily Itineraries"
-  // is one level deeper still (a folder of tour-name folders, see
-  // sec.groups) and marked highlight — it's easy to miss among the other
-  // plain-looking sections otherwise, so it gets its own accent colour and
-  // a bigger icon rather than blending in.
+  // itself is just a plain heading (isHeading, no files/collapse of its
+  // own) — the two tour folders inside it are sent through as their own
+  // regular collapsible sections right below it, so they read as clearly
+  // separate, tappable items rather than being buried one level down
+  // inside a single folder that still looked easy to miss.
   list.innerHTML = docs.sections.map((sec) => {
-    if (sec.groups) {
-      const totalFiles = sec.groups.reduce((n, g) => n + g.files.length, 0);
-      return `
-      <div class="tkt-sec${sec.highlight ? ' tkt-sec-hl' : ''}">
-        <div class="tkt-hdr" onclick="toggleTicketSection(this)">
-          <div class="tkt-top">
-            <span class="tkt-title">${sec.highlight ? '<i class="ti ti-calendar-event" style="color:var(--red);margin-right:6px"></i>' : ''}${esc(sec.name)}</span>
-            <div class="tkt-meta">
-              <span class="tkt-badge">${totalFiles}</span>
-              <i class="ti ti-chevron-down tkt-chev"></i></div>
-          </div>
-        </div>
-        <div class="tkt-body" style="padding:10px 0 0">
-          ${sec.groups.map(g => `
-            <div class="sec-label" style="margin:0 0 6px">${esc(g.name)}</div>
-            ${filesHtml(g.files, g.name)}
-          `).join('<div style="height:10px"></div>')}
-        </div>
-      </div>`;
+    if (sec.isHeading) {
+      return `<div class="sec-label">${esc(sec.name)}</div>`;
     }
     if (sec.collapsible) {
       return `
