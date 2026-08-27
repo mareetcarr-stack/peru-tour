@@ -595,30 +595,55 @@ function getDocuments_() {
   if (topFiles.length) sections.push({ name: 'Key Documents', files: topFiles });
 
   // Any subfolder Maree creates directly inside the TripADeal folder shows
-  // up automatically as its own section — this is how the two daily
-  // itinerary folders ("Peru & The Caribbean", "Ultimate South America
-  // Adventure") get picked up, no code change needed per folder. Marked
-  // collapsible so the app can show these collapsed by default — a folder
-  // full of day-by-day itinerary files would otherwise dump a long list
-  // straight onto the Docs tab.
+  // up automatically as its own section — no code change needed per
+  // folder. Marked collapsible so the app can show these collapsed by
+  // default — a folder full of day-by-day itinerary files would otherwise
+  // dump a long list straight onto the Docs tab.
+  //
+  // "Daily Itineraries" is one level deeper than everything else, though:
+  // it's a folder of FOLDERS, one per tour ("Peru & The Caribbean",
+  // "Ultimate South America Adventure"), each holding that tour's actual
+  // itinerary files — not files directly. Reading it the same way as
+  // every other subfolder (direct files only) is exactly why it showed up
+  // with nothing in it. Only this one folder needs the extra level; a
+  // subfolder with files directly inside it (Tour Leader Reports, or any
+  // future one-off folder) is left exactly as before.
+  //
   // "Tour Leader Reports" used to be loose files in the root folder,
   // shown flattened like Key Documents/Other documents — Maree later
   // organised them into their own Drive folder for her own tidiness, but
   // still wants them displayed the old way (always visible, not behind a
   // tap), so it's excluded from the generic collapsible treatment below.
   const FLATTENED_SUBFOLDER_NAMES_ = ['tour leader reports'];
+  const NESTED_SUBFOLDER_NAMES_ = ['daily itineraries'];
   const subfolderSections = [];
   const subfolders = root.getFolders();
   while (subfolders.hasNext()) {
     const sub = subfolders.next();
-    const isFlattened = FLATTENED_SUBFOLDER_NAMES_.indexOf(sub.getName().toLowerCase()) !== -1;
+    const nameLower = sub.getName().toLowerCase();
+    const isFlattened = FLATTENED_SUBFOLDER_NAMES_.indexOf(nameLower) !== -1;
+    const isNested = NESTED_SUBFOLDER_NAMES_.indexOf(nameLower) !== -1;
+    if (isNested) {
+      const groups = [];
+      const grandchildren = sub.getFolders();
+      while (grandchildren.hasNext()) {
+        const g = grandchildren.next();
+        groups.push({ name: g.getName(), files: listFolderFiles_(g, false) });
+      }
+      groups.sort((a, b) => a.name.localeCompare(b.name));
+      subfolderSections.push({ name: sub.getName(), groups: groups, collapsible: true, highlight: true });
+      continue;
+    }
     subfolderSections.push({
       name: sub.getName(),
       files: listFolderFiles_(sub, false),
       collapsible: !isFlattened,
     });
   }
-  subfolderSections.sort((a, b) => a.name.localeCompare(b.name));
+  // Highlighted sections (Daily Itineraries) sort first among the
+  // subfolders — being visually distinct doesn't help if it's still
+  // buried a few screens down, alphabetically after everything else.
+  subfolderSections.sort((a, b) => (b.highlight ? 1 : 0) - (a.highlight ? 1 : 0) || a.name.localeCompare(b.name));
   sections.push.apply(sections, subfolderSections);
 
   const otherRootFiles = rootFiles.filter((f) => TOP_DOC_ORDER_.indexOf(f.id) === -1);

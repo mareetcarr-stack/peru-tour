@@ -210,6 +210,11 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
 
 /* tickets */
 .tkt-sec{background:var(--bg2);border-radius:12px;margin-bottom:8px;border:1px solid var(--border);overflow:hidden}
+/* Daily Itineraries otherwise looks identical to every other plain
+   subfolder section and is easy to scroll straight past — a coloured
+   border + icon (added inline, see renderDocuments) makes it stand out
+   from the rest of the Docs tab at a glance. */
+.tkt-sec-hl{border-color:var(--red);border-width:1.5px}
 .tkt-hdr{display:flex;flex-direction:column;gap:3px;padding:11px 13px;cursor:pointer;user-select:none}
 .tkt-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
 .tkt-title{color:var(--text);font-size:13px;font-weight:600}
@@ -1059,7 +1064,7 @@ function renderDocuments() {
   // those specific files — not the whole Key Documents section, since the
   // Briefing docs sit there too and aren't meant to be shared the same way.
   const SHAREABLE_SECTIONS_ = ['Boarding Passes', 'Passports'];
-  const isShareableFile = (sec, f) => SHAREABLE_SECTIONS_.includes(sec.name) || /recommendations/i.test(f.name);
+  const isShareableFile = (name, f) => SHAREABLE_SECTIONS_.includes(name) || /recommendations/i.test(f.name);
   // Boarding passes clear themselves out the next time a full batch is
   // regenerated. Passports have NO equivalent auto-clear at all — a new
   // upload just gets added alongside whatever's already there (numbered
@@ -1067,8 +1072,8 @@ function renderDocuments() {
   // option old scans would accumulate in the Docs tab forever. Both get a
   // delete button so either can be removed sooner than that if needed.
   const DELETABLE_SECTIONS_ = { 'Boarding Passes': 'boardingPass', 'Passports': 'passport' };
-  const filesHtml = (sec) => sec.files.length ? sec.files.map((f) => {
-    const deleteKind = DELETABLE_SECTIONS_[sec.name];
+  const filesHtml = (files, name) => files.length ? files.map((f) => {
+    const deleteKind = DELETABLE_SECTIONS_[name];
     return `
       <div class="rec-card">
         <div class="rec-lnk" style="border-bottom:none;padding-bottom:0;flex-direction:column;align-items:stretch;gap:8px">
@@ -1076,7 +1081,7 @@ function renderDocuments() {
             <span class="rec-txt" style="color:var(--text);word-break:break-word;overflow-wrap:anywhere">${esc(f.name)}</span></div>
           <div style="display:flex;gap:6px;justify-content:flex-end">
             ${deleteKind ? `<div class="wa-btn" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)" title="Delete from Google Drive" onclick="deleteDocument('${esc(f.id)}','${jsStrLit_(f.name)}','${deleteKind}')"><i class="ti ti-trash"></i></div>` : ''}
-            ${isShareableFile(sec, f) ? `<div class="wa-btn" onclick="waShare('${esc(f.url)}')"><i class="ti ti-brand-whatsapp"></i>Share</div>` : ''}
+            ${isShareableFile(name, f) ? `<div class="wa-btn" onclick="waShare('${esc(f.url)}')"><i class="ti ti-brand-whatsapp"></i>Share</div>` : ''}
             <a href="${esc(f.url)}" target="_blank" rel="noopener" class="wa-btn" style="text-decoration:none"><i class="ti ti-external-link"></i>Open</a>
           </div>
         </div>
@@ -1088,8 +1093,32 @@ function renderDocuments() {
   // day-by-day itinerary set. Marked collapsible there since a folder full
   // of daily itinerary files would otherwise dump a long list straight
   // onto the tab; tapping the header reveals it instead (same
-  // expand/collapse interaction as the Tickets tab).
+  // expand/collapse interaction as the Tickets tab). "Daily Itineraries"
+  // is one level deeper still (a folder of tour-name folders, see
+  // sec.groups) and marked highlight — it's easy to miss among the other
+  // plain-looking sections otherwise, so it gets its own accent colour and
+  // a bigger icon rather than blending in.
   list.innerHTML = docs.sections.map((sec) => {
+    if (sec.groups) {
+      const totalFiles = sec.groups.reduce((n, g) => n + g.files.length, 0);
+      return `
+      <div class="tkt-sec${sec.highlight ? ' tkt-sec-hl' : ''}">
+        <div class="tkt-hdr" onclick="toggleTicketSection(this)">
+          <div class="tkt-top">
+            <span class="tkt-title">${sec.highlight ? '<i class="ti ti-calendar-event" style="color:var(--red);margin-right:6px"></i>' : ''}${esc(sec.name)}</span>
+            <div class="tkt-meta">
+              <span class="tkt-badge">${totalFiles}</span>
+              <i class="ti ti-chevron-down tkt-chev"></i></div>
+          </div>
+        </div>
+        <div class="tkt-body" style="padding:10px 0 0">
+          ${sec.groups.map(g => `
+            <div class="sec-label" style="margin:0 0 6px">${esc(g.name)}</div>
+            ${filesHtml(g.files, g.name)}
+          `).join('<div style="height:10px"></div>')}
+        </div>
+      </div>`;
+    }
     if (sec.collapsible) {
       return `
       <div class="tkt-sec">
@@ -1101,12 +1130,12 @@ function renderDocuments() {
               <i class="ti ti-chevron-down tkt-chev"></i></div>
           </div>
         </div>
-        <div class="tkt-body" style="padding:10px 0 0">${filesHtml(sec)}</div>
+        <div class="tkt-body" style="padding:10px 0 0">${filesHtml(sec.files, sec.name)}</div>
       </div>`;
     }
     return `
     <div class="sec-label">${esc(sec.name)}</div>
-    ${filesHtml(sec)}
+    ${filesHtml(sec.files, sec.name)}
   `;
   }).join('');
 }
