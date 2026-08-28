@@ -240,6 +240,7 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
 .info-top{display:flex;align-items:center;gap:10px}
 .diet-input{width:100%;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:8px;color:var(--dark-text);font-size:12px;padding:6px 9px;margin-top:8px;font-family:inherit;outline:none}
 .diet-input.has-diet{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
+.diet-input.has-health{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
 .bday-btn{font-size:10px;padding:3px 8px;border-radius:8px;cursor:pointer;flex-shrink:0;border:none;font-family:inherit;font-weight:600}
 .bday-btn.off{background:var(--bg3);color:var(--text4);border:1px solid var(--border2)}
 .bday-btn.on{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
@@ -588,7 +589,13 @@ function renderFlights() {
   const badge = document.getElementById('top-badge');
   if (!DATA) return;
   const flights = DATA.flights || [];
-  const delayed = flights.filter(f => /delay/i.test(f.status));
+  // A flight stays out of the alert list once its exact current status
+  // text has been dismissed from the app (see dismissFlightAlert) — the
+  // card below still always shows the live "Delayed" pill regardless,
+  // this only stops it repeating in the summary banner. If the scraped
+  // status text later changes to something genuinely different, it no
+  // longer matches what was dismissed and the alert comes back on its own.
+  const delayed = flights.filter(f => /delay/i.test(f.status) && f.status !== f.dismissedStatus);
 
   // sheet-runner.js flags anyone whose Arrival Lima date came from an
   // "Arrive early" source column rather than a real dated one — that's an
@@ -600,13 +607,15 @@ function renderFlights() {
   const arrivalAssumedHtml = DATA.arrivalAssumed
     ? `<div class="alert-bar" style="background:var(--amber-bg);border-color:var(--amber-border)">
          <div class="alert-dot" style="background:var(--amber)"></div>
-         <div class="alert-text">${esc(DATA.arrivalAssumed)}</div>
+         <div class="alert-text" style="flex:1">${esc(DATA.arrivalAssumed)}</div>
+         <i class="ti ti-x" style="color:var(--amber);cursor:pointer;flex-shrink:0" title="Clear this warning" onclick="clearArrivalAssumed()"></i>
        </div>`
     : '';
 
   const delayedHtml = delayed.map(f => `
       <div class="alert-bar"><div class="alert-dot"></div>
-        <div class="alert-text"><strong>${esc(f.flightNumber)}</strong> on ${esc(f.date)} — ${esc(f.status)}</div>
+        <div class="alert-text" style="flex:1"><strong>${esc(f.flightNumber)}</strong> on ${esc(f.date)} — ${esc(f.status)}</div>
+        <i class="ti ti-x" style="color:var(--red);cursor:pointer;flex-shrink:0" title="Clear this warning" onclick="dismissFlightAlert(${f.row}, '${jsStrLit_(f.status)}')"></i>
       </div>`).join('');
 
   alertBox.innerHTML = arrivalAssumedHtml + delayedHtml;
@@ -635,6 +644,23 @@ function renderFlights() {
       ${f.link ? `<a class="fl-link" href="${esc(f.link)}" target="_blank" rel="noopener">View on FlightAware →</a>` : ''}
     </div>`;
   }).join('');
+}
+// Clears the amber "arrival date assumed" banner — sheet-runner.js will
+// write a fresh one on the next import if a future tour has the same
+// situation, this only clears what's showing right now.
+function clearArrivalAssumed() {
+  DATA.arrivalAssumed = '';
+  renderFlights();
+  write({ action: 'clearArrivalAssumed' });
+}
+// Dismisses one flight's delay alert — passing the exact status text
+// currently showing, so the alert only stays cleared until that text
+// actually changes to something new (see dismissedStatus in Code.gs).
+function dismissFlightAlert(row, status) {
+  const f = (DATA.flights || []).find(x => x.row === row);
+  if (f) f.dismissedStatus = status;
+  renderFlights();
+  write({ action: 'dismissFlightAlert', row: row, status: status });
 }
 
 // ─── PASSENGERS ──────────────────────────────────────────────────
@@ -970,10 +996,12 @@ function renderInfo() {
   list.innerHTML = info.map(p => {
     const hasBday = !!p.birthday;
     const hasDiet = !!(p.diet && p.diet.trim());
+    const hasHealth = !!(p.health && p.health.trim());
     return `<div class="info-row${p.cancelled ? ' cancelled-row' : ''}${hasDiet ? ' has-diet' : ''}"><div class="info-top"><div class="av">${esc(initials(p.name))}</div>
-      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}${p.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}${hasDiet ? ' <span class="pill a">🍽️ Diet</span>' : ''}${p.age ? ` <span style="opacity:.6;font-weight:400">(${esc(p.age)})</span>` : ''}</div></div>
+      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}${p.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}${hasDiet ? ' <span class="pill a">🍽️ Diet</span>' : ''}${hasHealth ? ' <span class="pill b">⚕️ Health</span>' : ''}${p.age ? ` <span style="opacity:.6;font-weight:400">(${esc(p.age)})</span>` : ''}</div></div>
       <button class="bday-btn ${hasBday ? 'on' : 'off'}" onclick="togBday('${p.id}', this)">${hasBday ? '🎂 During tour!' : '🎂 Birthday?'}</button></div>
       <input class="diet-input${hasDiet ? ' has-diet' : ''}" type="text" placeholder="Dietary requirements — tap to edit" value="${esc(p.diet)}" onchange="setDiet('${p.id}', this.value)">
+      <input class="diet-input${hasHealth ? ' has-health' : ''}" style="margin-top:6px" type="text" placeholder="Health/medical notes — tap to edit (not shared with hotels/restaurants)" value="${esc(p.health)}" onchange="setHealth('${p.id}', this.value)">
       <div class="bday-area${hasBday ? ' open' : ''}"><span class="bday-lbl">Date:</span>
         <input type="date" class="bday-input" value="${esc(p.birthday)}" onchange="setBirthday('${p.id}', this.value)"></div>
     </div>`;
@@ -1000,6 +1028,16 @@ function setDiet(id, value) {
   const row = DATA.info.find(p => p.id === id); if (row) row.diet = value;
   renderInfo(); // re-render so the highlight reflects the new value immediately, not just after the next refresh
   write({ action: 'setDiet', id: id, value: value });
+}
+// Health/medical notes — deliberately separate from dietary requirements
+// and never included in the WhatsApp reservation messages (see
+// ticket-checker.js's restaurantMessage_/hotelMessage_ — neither reads
+// this field at all), since hotels/restaurants only ever need to know
+// about dietary needs, not medical information.
+function setHealth(id, value) {
+  const row = DATA.info.find(p => p.id === id); if (row) row.health = value;
+  renderInfo();
+  write({ action: 'setHealth', id: id, value: value });
 }
 
 // ─── RESERVATIONS (hotel/restaurant reconfirmation messages) ───────────

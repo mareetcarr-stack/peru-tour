@@ -208,6 +208,28 @@ function getArrivalAssumedNames_() {
   }
 }
 
+// Manually dismisses the "arrival date assumed" banner once Maree has
+// actually verified the traveller's real arrival — sheet-runner.js will
+// still write a fresh one here next import if a future tour has the same
+// "Arrive early" situation, this only clears what's showing right now.
+function clearArrivalAssumed_() {
+  sheet_('travellerData').getRange(1, 16).setValue('');
+  return { cleared: true };
+}
+
+// Dismisses a flight-delay alert from the Flights tab summary — the
+// flight's own status pill on its card is untouched (that always shows
+// the live scraped status), this only stops that SPECIFIC status text
+// from repeating in the alert banner. Storing the exact text (rather than
+// just a boolean) means the alert comes back on its own the moment
+// flight-status-monitor.js scrapes a genuinely different status — a new
+// delay amount, or a fresh delay after a since-resolved one — rather than
+// staying silently dismissed forever once set.
+function dismissFlightAlert_(row, status) {
+  sheet_('flights').getRange(row, 8).setValue(status); // col H = Dismissed
+  return { row: row, status: status };
+}
+
 // ─── CANCELLED TRAVELLERS ──────────────────────────────────────────────
 // A traveller who dropped out before the tour (but was never removed from
 // the sheet's row layout) gets marked here instead. Column N of CHECK-IN
@@ -275,6 +297,7 @@ function getFlights_() {
     if (!row[1]) continue; // no flight number → skip
     const flightNumber = String(row[1]).trim();
     out.push({
+      row: r + 1,
       date: cellStr_(row[0]), flightNumber: flightNumber,
       // Column C is a HYPERLINK() formula whose display text is just "View" —
       // getValues() only returns that display text, losing the URL. The
@@ -282,6 +305,13 @@ function getFlights_() {
       // directly rather than trying to pull rich-text/formula data out.
       link: flightNumber ? 'https://es.flightaware.com/live/flight/' + encodeURIComponent(flightNumber) : '',
       status: row[3] || '', departure: row[4] || '', arrival: row[5] || '',
+      // Column H — set when Maree dismisses a delay alert from the app
+      // (see dismissFlightAlert_ below). Holds the exact status text that
+      // was dismissed, so the alert only stays gone until the live status
+      // actually changes to something new — if flight-status-monitor.js
+      // later scrapes a different delay (or a fresh one after a landing),
+      // this won't match any more and the alert reappears on its own.
+      dismissedStatus: row[7] || '',
     });
   }
   return out;
@@ -391,6 +421,7 @@ function getInfo_() {
     out.push({
       id: String(row[0]), name: fullName_(row[1], row[2]),
       birthday: isoDate_(row[3]), age: row[4] || '', diet: row[5] || '',
+      health: row[6] || '', // col G — medical/health notes, never shared in the WhatsApp templates
       cancelled: cancelledNames.has(normalizeName_(row[1], row[2])),
     });
   }
@@ -1063,6 +1094,9 @@ function handleWrite_(body) {
     case 'toggleTicket': return toggleTicket_(body.id, body.col, body.value);
     case 'setBirthday': return setBirthday_(body.id, body.value);
     case 'setDiet': return setDiet_(body.id, body.value);
+    case 'setHealth': return setHealth_(body.id, body.value);
+    case 'clearArrivalAssumed': return clearArrivalAssumed_();
+    case 'dismissFlightAlert': return dismissFlightAlert_(body.row, body.status);
     case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
     case 'deleteReceipt': return deleteReceipt_(body.row);
@@ -1172,6 +1206,13 @@ function setDiet_(id, value) {
   const sh = sheet_('info');
   const row = findRowById_(sh, id, 1);
   sh.getRange(row, 6).setValue(value); // col F = Dietary Requirements
+  return { id: id, value: value };
+}
+
+function setHealth_(id, value) {
+  const sh = sheet_('info');
+  const row = findRowById_(sh, id, 1);
+  sh.getRange(row, 7).setValue(value); // col G = Health
   return { id: id, value: value };
 }
 
