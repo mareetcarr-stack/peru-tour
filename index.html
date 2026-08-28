@@ -240,7 +240,7 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
 .info-top{display:flex;align-items:center;gap:10px}
 .diet-input{width:100%;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:8px;color:var(--dark-text);font-size:12px;padding:6px 9px;margin-top:8px;font-family:inherit;outline:none}
 .diet-input.has-diet{background:var(--amber-bg);border-color:var(--amber);color:var(--amber)}
-.diet-input.has-health{background:var(--blue-bg);border-color:var(--blue);color:var(--blue)}
+.diet-input.has-health{background:var(--red-bg);border-color:var(--red);color:var(--red)}
 .bday-btn{font-size:10px;padding:3px 8px;border-radius:8px;cursor:pointer;flex-shrink:0;border:none;font-family:inherit;font-weight:600}
 .bday-btn.off{background:var(--bg3);color:var(--text4);border:1px solid var(--border2)}
 .bday-btn.on{background:var(--green-bg);color:var(--green);border:1px solid var(--green-border)}
@@ -998,7 +998,7 @@ function renderInfo() {
     const hasDiet = !!(p.diet && p.diet.trim());
     const hasHealth = !!(p.health && p.health.trim());
     return `<div class="info-row${p.cancelled ? ' cancelled-row' : ''}${hasDiet ? ' has-diet' : ''}"><div class="info-top"><div class="av">${esc(initials(p.name))}</div>
-      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}${p.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}${hasDiet ? ' <span class="pill a">🍽️ Diet</span>' : ''}${hasHealth ? ' <span class="pill b">⚕️ Health</span>' : ''}${p.age ? ` <span style="opacity:.6;font-weight:400">(${esc(p.age)})</span>` : ''}</div></div>
+      <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}${p.cancelled ? ' <span class="pill r">Cancelled</span>' : ''}${hasDiet ? ' <span class="pill a">🍽️ Diet</span>' : ''}${hasHealth ? ' <span class="pill r">⚕️ Health</span>' : ''}${p.age ? ` <span style="opacity:.6;font-weight:400">(${esc(p.age)})</span>` : ''}</div></div>
       <button class="bday-btn ${hasBday ? 'on' : 'off'}" onclick="togBday('${p.id}', this)">${hasBday ? '🎂 During tour!' : '🎂 Birthday?'}</button></div>
       <input class="diet-input${hasDiet ? ' has-diet' : ''}" type="text" placeholder="Dietary requirements — tap to edit" value="${esc(p.diet)}" onchange="setDiet('${p.id}', this.value)">
       <input class="diet-input${hasHealth ? ' has-health' : ''}" style="margin-top:6px" type="text" placeholder="Health/medical notes — tap to edit (not shared with hotels/restaurants)" value="${esc(p.health)}" onchange="setHealth('${p.id}', this.value)">
