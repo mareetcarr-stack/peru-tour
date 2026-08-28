@@ -230,6 +230,19 @@ function dismissFlightAlert_(row, status) {
   return { row: row, status: status };
 }
 
+// Removes a flight card from the app once it's landed and no longer
+// needs tracking. Blanks the row (cols A-H) rather than deleting it
+// outright — deleting would shift every row below it, breaking any
+// in-flight references to those row numbers, same reasoning as
+// deleteReceipt_. getFlights_() already skips any row with no flight
+// number (col B), so a blanked row just disappears from the app.
+function clearFlightRow_(row) {
+  const sh = sheet_('flights');
+  if (row < 2) throw new Error('Refusing to clear the header row');
+  sh.getRange(row, 1, 1, 8).setValue('');
+  return { row: row };
+}
+
 // ─── CANCELLED TRAVELLERS ──────────────────────────────────────────────
 // A traveller who dropped out before the tour (but was never removed from
 // the sheet's row layout) gets marked here instead. Column N of CHECK-IN
@@ -1097,6 +1110,7 @@ function handleWrite_(body) {
     case 'setHealth': return setHealth_(body.id, body.value);
     case 'clearArrivalAssumed': return clearArrivalAssumed_();
     case 'dismissFlightAlert': return dismissFlightAlert_(body.row, body.status);
+    case 'clearFlightRow': return clearFlightRow_(body.row);
     case 'addReceipt': return addReceipt_(body.description, body.observation, body.paymentMethod, body.currency, body.amount);
     case 'setReceiptField': return setReceiptField_(body.row, body.field, body.value);
     case 'deleteReceipt': return deleteReceipt_(body.row);

@@ -637,7 +637,8 @@ function renderFlights() {
       <div class="fl-top">
         <div class="fl-left"><div class="fl-icon ${iconCls}"><i class="ti ti-plane"></i></div>
           <div><div class="fl-num">${esc(f.flightNumber)}</div><div class="fl-sub">${esc(f.date)}</div></div></div>
-        <span class="pill ${pillCls}">${pillTxt}</span></div>
+        <div style="display:flex;align-items:center;gap:8px"><span class="pill ${pillCls}">${pillTxt}</span>
+          <i class="ti ti-x" style="color:var(--text4);cursor:pointer" title="Remove this flight — arrived, no longer needed" onclick="deleteFlight(${f.row})"></i></div></div>
       ${f.scheduledTimes ? `<div class="fl-status">${esc(f.scheduledTimes)}</div>` : ''}
       ${f.status ? `<div class="fl-status">${esc(f.status)}</div>` : ''}
       ${f.arrival ? `<div class="fl-status">Arrival: ${esc(f.arrival)}</div>` : ''}
@@ -661,6 +662,19 @@ function dismissFlightAlert(row, status) {
   if (f) f.dismissedStatus = status;
   renderFlights();
   write({ action: 'dismissFlightAlert', row: row, status: status });
+}
+// Removes a flight card entirely once it's landed and there's nothing
+// left to track — blanks that row in FLIGHT STATUS rather than deleting
+// it outright, so row numbers below it don't shift (same approach
+// deleteReceipt uses). flight-status-monitor.js reads flight number/date
+// fresh from the sheet each cycle, so a blanked row also just stops
+// getting scraped — no wasted checks on a flight that's already done.
+function deleteFlight(row) {
+  const f = (DATA.flights || []).find(x => x.row === row);
+  if (!confirm(`Remove ${f ? f.flightNumber + ' on ' + f.date : 'this flight'}?\n\nThis clears it from the sheet — only do this once it's landed and you don't need to track it any more.`)) return;
+  DATA.flights = (DATA.flights || []).filter(x => x.row !== row);
+  renderFlights();
+  write({ action: 'clearFlightRow', row: row });
 }
 
 // ─── PASSENGERS ──────────────────────────────────────────────────
