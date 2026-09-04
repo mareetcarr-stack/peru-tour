@@ -31,8 +31,8 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
    the Sheet still make sense) but is greyed out and non-interactive
    everywhere except the Passengers tab, where the Reinstate button lives. */
 .cancelled-row{opacity:.4;pointer-events:none}
-.wa-btn,.nav-item,.tab,.ck,.chk-box,.tkt-hdr,.bday-btn,#refresh-btn,#setup-btn{transition:transform .08s ease,opacity .08s ease}
-.wa-btn:active,.nav-item:active,.tab:active,.ck:active,.chk-box:active,.tkt-hdr:active,.bday-btn:active,#refresh-btn:active,#setup-btn:active{transform:scale(.92);opacity:.7}
+.wa-btn,.nav-item,.tab,.ck,.chk-box,.tkt-hdr,.bday-btn,.sel-all-btn,#refresh-btn,#setup-btn{transition:transform .08s ease,opacity .08s ease}
+.wa-btn:active,.nav-item:active,.tab:active,.ck:active,.chk-box:active,.tkt-hdr:active,.bday-btn:active,.sel-all-btn:active,#refresh-btn:active,#setup-btn:active{transform:scale(.92);opacity:.7}
 :root{
   /* Back to a fully black page per feedback, but with a visible light
      border on every content surface (card/row/table) so it still reads as
@@ -130,7 +130,18 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .pax-actions{display:flex;align-items:center;gap:6px;justify-content:flex-end;flex-wrap:wrap;margin-top:8px}
 .av{width:32px;height:32px;border-radius:50%;background:var(--blue-bg);display:flex;align-items:center;justify-content:center;color:var(--blue);font-size:11px;font-weight:700;flex-shrink:0}
 .pax-name{color:var(--text);font-size:13px;font-weight:600;overflow-wrap:break-word}
+/* PNR sits on the name's own row, hard right — it's the number Yenrri reads
+   out at the LATAM counter, so it gets the largest, brightest text in the
+   row. flex-shrink:0 keeps it whole and the name column (min-width:0) does
+   all the wrapping, so a long name never pushes the PNR out of the row. */
+.pax-name-row{display:flex;align-items:baseline;gap:10px}
+.pax-name-row .pax-name{flex:1;min-width:0}
+.pax-pnr{color:var(--text);font-size:16px;font-weight:700;letter-spacing:.04em;flex-shrink:0;white-space:nowrap;text-align:right}
 .pax-detail{color:var(--text4);font-size:10px;margin-top:1px}
+/* Section label with an action button on its right (Passengers list header) */
+.sec-hdr-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.sel-all-btn{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 10px;color:var(--text2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
+.sel-all-btn i{font-size:13px}
 .latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:8px;padding:3px 8px;color:var(--yellow);font-size:10px;text-decoration:none;flex-shrink:0;white-space:nowrap;font-weight:600}
 .latam-link i{font-size:12px}
 .arr-ck{flex-shrink:0}
@@ -297,7 +308,10 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
       <div class="sec-label">Generate Boarding Passes</div>
       <div id="boardingpass-card" class="tot-block"></div>
       <div class="sum-grid" id="pax-summary"></div>
-      <div class="sec-label">Check-in and boarding pass status</div>
+      <div class="sec-hdr-row">
+        <div class="sec-label">Check-in and boarding pass status</div>
+        <div class="sel-all-btn" id="pax-select-all" onclick="toggleAllArrived()"></div>
+      </div>
       <div class="pax-col-hdr"><span>Arrived</span></div>
       <div id="pax-list"><div class="empty-hint">Loading…</div></div>
     </div>
@@ -693,6 +707,7 @@ function renderPassengers() {
   document.getElementById('pax-summary').innerHTML = `
     <div class="sum-card"><div class="sum-n">${arrived}/${travellers.length}</div><div class="sum-l">Arrived at Airport</div></div>
     <div class="sum-card"><div class="sum-n" style="color:var(--green)">${downloaded}</div><div class="sum-l">Boarding Passes Downloaded</div>${lastRun ? `<div class="sum-sub">Last run: ${esc(lastRun)}</div>` : ''}</div>`;
+  updateSelectAllBtn();
   const list = document.getElementById('pax-list');
   if (!pax.length) { list.innerHTML = '<div class="empty-hint">No passengers yet</div>'; return; }
   list.innerHTML = pax.map(p => {
@@ -701,7 +716,13 @@ function renderPassengers() {
       return `<div class="pax-row">
         <div class="pax-top">
           <div class="ck arr-ck" style="visibility:hidden"></div>
-          <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)} <span class="pill r">Cancelled</span></div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
+          <div style="flex:1;min-width:0">
+            <div class="pax-name-row">
+              <div class="pax-name">${esc(p.name)} <span class="pill r">Cancelled</span></div>
+              ${p.pnr ? `<div class="pax-pnr">${esc(p.pnr)}</div>` : ''}
+            </div>
+            <div class="pax-detail">${esc(p.passport || '—')}</div>
+          </div>
         </div>
         <div class="pax-actions">
           <div class="wa-btn" onclick="toggleCancelled('${p.id}', true)"><i class="ti ti-rotate"></i>Reinstate</div>
@@ -717,7 +738,13 @@ function renderPassengers() {
         ${isYenrri
           ? '<div class="ck arr-ck" style="visibility:hidden"></div>'
           : `<div class="ck arr-ck${p.arrived ? ' y' : ''}" title="Arrived at airport" onclick="toggleArrived('${p.id}', this)"></div>`}
-        <div style="flex:1;min-width:0"><div class="pax-name">${esc(p.name)}</div><div class="pax-detail">${esc(p.passport || '—')} · ${esc(p.pnr || '—')}</div></div>
+        <div style="flex:1;min-width:0">
+          <div class="pax-name-row">
+            <div class="pax-name">${esc(p.name)}</div>
+            ${p.pnr ? `<div class="pax-pnr">${esc(p.pnr)}</div>` : ''}
+          </div>
+          <div class="pax-detail">${esc(p.passport || '—')}</div>
+        </div>
       </div>
       <div class="pax-actions">
         ${p.checkinLink ? `<a class="latam-link" href="${esc(p.checkinLink)}" target="_blank"><i class="ti ti-plane-departure"></i>Check-in</a>` : ''}
@@ -759,12 +786,48 @@ function toggleCancelled(id, currentlyCancelled) {
     waShare(msg);
   }
 }
+// Everyone the Arrived tick actually applies to — Yenrri (id "0") is the
+// tour leader, not a travelling passenger, and cancelled travellers are out
+// of every count, so neither is ticked by the bulk action or counted in the
+// arrived summary.
+function arrivalTravellers() {
+  return (DATA && DATA.passengers || []).filter(p => p.id !== '0' && !p.cancelled);
+}
+// One button doing both jobs rather than two side by side: once everyone's
+// ticked the only useful action left is clearing them again.
+function updateSelectAllBtn() {
+  const travellers = arrivalTravellers();
+  const allArrived = travellers.length > 0 && travellers.every(p => p.arrived);
+  const btn = document.getElementById('pax-select-all');
+  btn.style.display = travellers.length ? '' : 'none';
+  btn.innerHTML = allArrived
+    ? '<i class="ti ti-square"></i>Deselect all'
+    : '<i class="ti ti-checkbox"></i>Select all';
+}
+// Ticks (or clears) every traveller's Arrived box in one go — the airport
+// alternative to tapping twenty checkboxes individually. One write for the
+// whole group, not one per person: twenty separate round trips to Apps
+// Script would take visibly long on a phone, and a half-finished loop would
+// leave the sheet inconsistent.
+function toggleAllArrived() {
+  const travellers = arrivalTravellers();
+  if (!travellers.length) return;
+  const value = !travellers.every(p => p.arrived);
+  const msg = value
+    ? `Mark all ${travellers.length} travellers as arrived at the airport?`
+    : `Clear the arrived tick for all ${travellers.length} travellers?`;
+  if (!confirm(msg)) return;
+  travellers.forEach(p => { p.arrived = value; });
+  renderPassengers();
+  write({ action: 'setAllArrived', value: value });
+}
 function toggleArrived(id, el) {
   const on = !el.classList.contains('y');
   el.classList.toggle('y');
   const row = DATA.passengers.find(p => p.id === id); if (row) row.arrived = on;
-  const travellers = DATA.passengers.filter(p => p.id !== '0');
+  const travellers = arrivalTravellers();
   document.querySelector('#pax-summary .sum-n').textContent = travellers.filter(p => p.arrived).length + '/' + travellers.length;
+  updateSelectAllBtn();
   write({ action: 'toggleArrived', id: id, value: on });
 }
 

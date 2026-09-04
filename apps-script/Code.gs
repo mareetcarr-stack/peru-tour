@@ -1097,6 +1097,7 @@ function handleWrite_(body) {
   switch (body.action) {
     case 'toggleChecklist': return toggleChecklistItem_(body.row, body.done);
     case 'toggleArrived': return toggleArrived_(body.id, body.value);
+    case 'setAllArrived': return setAllArrived_(body.value);
     case 'toggleCancelled': return toggleCancelled_(body.id, body.value);
     case 'toggleTourTick': return toggleTourTick_(body.id, body.tourIndex, body.value);
     case 'setTourValencia': return setTourValencia_(body.id, body.tourIndex, body.currency, body.amount);
@@ -1142,6 +1143,30 @@ function toggleArrived_(id, value) {
   const row = findRowById_(sh, id, 1);
   sh.getRange(row, 4).setValue(value ? 'TRUE' : 'FALSE'); // col D = Arrived
   return { id: id, value: value };
+}
+
+// Bulk version of toggleArrived_, backing the Passengers tab's Select all /
+// Deselect all button. Column D is written in one setValues call rather than
+// a call per row — the app sends this once for the whole group, so the whole
+// thing is a single round trip. Yenrri (id "0") and cancelled travellers
+// keep whatever they already had: they're excluded from the arrived count in
+// the app, so a bulk tick shouldn't quietly set them either.
+function setAllArrived_(value) {
+  const sh = sheet_('checkin');
+  const rows = sh.getDataRange().getValues();
+  if (rows.length < 2) return { value: value, count: 0 };
+  const col = [];
+  let count = 0;
+  for (let r = 1; r < rows.length; r++) {
+    const row = rows[r];
+    const skip = (row[1] === '' && row[2] === '') // no name → not a passenger row
+      || String(row[0]) === '0'
+      || bool_(row[CANCELLED_COL_ - 1]);
+    col.push([skip ? row[3] : (value ? 'TRUE' : 'FALSE')]);
+    if (!skip) count++;
+  }
+  sh.getRange(2, 4, col.length, 1).setValues(col); // col D = Arrived
+  return { value: value, count: count };
 }
 
 function toggleTourTick_(id, tourIndex, value) {
