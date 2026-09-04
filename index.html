@@ -137,7 +137,10 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .pax-name-row{display:flex;align-items:baseline;gap:10px}
 .pax-name-row .pax-name{flex:1;min-width:0}
 .pax-pnr{color:var(--text);font-size:16px;font-weight:700;letter-spacing:.04em;flex-shrink:0;white-space:nowrap;text-align:right}
-.pax-detail{color:var(--text4);font-size:10px;margin-top:1px}
+/* Passport number: white and a size up from the old 10px grey, so it's
+   readable at the counter alongside the PNR. Kept a step below the name
+   in size and weight so the row still reads name-first. */
+.pax-detail{color:var(--text);font-size:12px;font-weight:500;margin-top:2px}
 /* Section label with an action button on its right (Passengers list header) */
 .sec-hdr-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sel-all-btn{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 10px;color:var(--text2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
