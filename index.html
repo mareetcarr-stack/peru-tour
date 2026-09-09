@@ -44,7 +44,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%}
   --green:#3dbd75;--green-bg:#0d2e1a;--green-border:#1e5e1e;
   --amber:#f59e0b;--amber-bg:#2e1a0d;--amber-border:#4d3800;
   --blue:#60a5fa;--blue-bg:#0d1a2e;--blue-border:#1e1e50;
-  --purple:#a78bfa;--purple-bg:#1e1a2e;
+  --purple:#a78bfa;--purple-bg:#1e1a2e;--purple-border:#3c3260;
   --yellow:#f0d030;--yellow-bg:#2e2708;--yellow-border:#4d4308;
   --dark-bg:#0a0a0a;--dark-border:#333336;--dark-text:#fff;
   --nav-h:64px;
@@ -145,6 +145,11 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .sec-hdr-row{display:flex;align-items:center;justify-content:space-between;gap:10px}
 .sel-all-btn{display:inline-flex;align-items:center;gap:4px;background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:5px 10px;color:var(--text2);font-size:10px;font-weight:600;cursor:pointer;white-space:nowrap;flex-shrink:0}
 .sel-all-btn i{font-size:13px}
+/* Color modifiers so the Checklist's two per-day buttons read apart from
+   each other at a glance, and from the plain grey Passengers one above —
+   same pattern as .pill's letter-suffixed color classes. */
+.sel-all-btn.blue{background:var(--blue-bg);border-color:var(--blue-border);color:var(--blue)}
+.sel-all-btn.purple{background:var(--purple-bg);border-color:var(--purple-border);color:var(--purple)}
 .latam-link{display:inline-flex;align-items:center;gap:4px;background:var(--yellow-bg);border:1px solid var(--yellow-border);border-radius:8px;padding:3px 8px;color:var(--yellow);font-size:10px;text-decoration:none;flex-shrink:0;white-space:nowrap;font-weight:600}
 .latam-link i{font-size:12px}
 .arr-ck{flex-shrink:0}
@@ -162,6 +167,13 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
    in its header — the header is one big tap target for expanding the day,
    so a button in there would fight that tap. */
 .chk-tools{display:flex;gap:6px;padding:9px 13px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+/* Everything on this screen is near-black-on-black, so one day's card was
+   hard to tell from the next — scoped to #checklist-list since .tkt-sec/
+   .tkt-hdr are shared with Tickets and Docs, which weren't part of this
+   ask. A brighter border plus a lighter header shade gives each day a
+   clearer edge and separates its header from its own body. */
+#checklist-list .tkt-sec{border-color:var(--border2)}
+#checklist-list .tkt-hdr{background:var(--bg3)}
 .chk-row.chk-edit{align-items:center;gap:7px}
 .chk-input{flex:1;min-width:0;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:8px;color:var(--dark-text);font-size:13px;padding:7px 9px;font-family:inherit;outline:none}
 .chk-input:focus{border-color:var(--border2)}
@@ -872,9 +884,9 @@ function renderChecklist() {
       </div>
       <div class="tkt-body${open ? ' open' : ''}">
         <div class="chk-tools">
-          ${d.items.length ? `<div class="sel-all-btn" onclick="toggleAllChecklist(${di})">
+          ${d.items.length ? `<div class="sel-all-btn blue" onclick="toggleAllChecklist(${di})">
             <i class="ti ti-${allDone ? 'square' : 'checkbox'}"></i>${allDone ? 'Deselect all' : 'Select all'}</div>` : ''}
-          <div class="sel-all-btn" onclick="toggleChecklistEdit(${di})">
+          <div class="sel-all-btn purple" onclick="toggleChecklistEdit(${di})">
             <i class="ti ti-${editing ? 'check' : 'pencil'}"></i>${editing ? 'Done editing' : 'Edit items'}</div>
         </div>
         ${d.items.map(it => editing
