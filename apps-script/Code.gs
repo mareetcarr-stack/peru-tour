@@ -340,7 +340,9 @@ function getChecklist_() {
     const a = String(aRaw == null ? '' : aRaw).trim();
     const text = String(row[1] || '').trim();
     if (/^Day\s+\d+/i.test(a)) {
-      current = { day: a, title: text, items: [] };
+      // The day header's own row number is what an "add item" write targets
+      // (the app has no other way to say which day an item belongs to).
+      current = { day: a, title: text, row: r + 1, items: [] };
       days.push(current);
     } else if (current && text) {
       // A checkbox that has never been touched comes back as an empty
@@ -353,6 +355,87 @@ function getChecklist_() {
     }
   }
   return days;
+}
+
+// Guards every write that targets a single checklist item row: the app can
+// only ever edit or blank a row that actually holds an item, so a stale or
+// wrong row number can't overwrite a "Day N" header (which would swallow
+// that whole day's items on the next read).
+function checklistItemRow_(sh, row) {
+  if (!(row >= 1)) throw new Error('Bad checklist row: ' + row);
+  const a = String(sh.getRange(row, 1).getValue() || '').trim();
+  if (/^Day\s+\d+/i.test(a)) throw new Error('Refusing to write over a day header (row ' + row + ')');
+  return row;
+}
+
+function setChecklistText_(row, text) {
+  const sh = sheet_('checklist');
+  const clean = String(text == null ? '' : text).trim();
+  if (!clean) throw new Error('Checklist item text cannot be empty');
+  sh.getRange(checklistItemRow_(sh, row), 2).setValue(clean);
+  return { row: row, text: clean };
+}
+
+// Blanks the item's row instead of deleting it, so row numbers below don't
+// shift under the app (same as deleteReceipt_/clearFlightRow_). getChecklist_
+// skips rows with no text, so a blanked row simply stops being an item.
+function deleteChecklistItem_(row) {
+  const sh = sheet_('checklist');
+  sh.getRange(checklistItemRow_(sh, row), 1, 1, 2).setValue('');
+  return { row: row };
+}
+
+// Adds an item at the end of one day's block. Prefers a blank row already
+// inside the block (left behind by a delete, or a spacer) so nothing shifts;
+// only inserts a real row when the block is full. Either way the whole
+// re-parsed checklist goes back to the app, because an insert renumbers
+// every item below it.
+function addChecklistItem_(dayRow, text) {
+  const sh = sheet_('checklist');
+  const clean = String(text == null ? '' : text).trim();
+  if (!clean) throw new Error('Checklist item text cannot be empty');
+  const rows = sh.getDataRange().getValues();
+  if (!(dayRow >= 1) || dayRow > rows.length) throw new Error('Bad day row: ' + dayRow);
+  if (!/^Day\s+\d+/i.test(String(rows[dayRow - 1][0] || '').trim())) {
+    throw new Error('Not a day header row: ' + dayRow);
+  }
+  let target = 0;      // a reusable blank row inside this day, if there is one
+  let lastInBlock = dayRow;
+  for (let r = dayRow; r < rows.length; r++) { // rows[dayRow] is the row after the header
+    if (/^Day\s+\d+/i.test(String(rows[r][0] || '').trim())) break;
+    lastInBlock = r + 1;
+    if (!target && String(rows[r][0] || '').trim() === '' && String(rows[r][1] || '').trim() === '') {
+      target = r + 1;
+    }
+  }
+  let firstItem = 0;
+  for (let r = dayRow; r < rows.length; r++) {
+    if (/^Day\s+\d+/i.test(String(rows[r][0] || '').trim())) break;
+    if (String(rows[r][1] || '').trim()) { firstItem = r + 1; break; }
+  }
+  if (!target) {
+    sh.insertRowAfter(lastInBlock);
+    target = lastInBlock + 1;
+  }
+  sh.getRange(target, 1).setValue('FALSE');
+  sh.getRange(target, 2).setValue(clean);
+  // Carry the day's own checkbox validation onto the new row, so the Sheet
+  // still shows a real tickbox when looked at directly.
+  if (firstItem) {
+    const rule = sh.getRange(firstItem, 1).getDataValidation();
+    if (rule) sh.getRange(target, 1).setDataValidation(rule);
+  }
+  return { row: target, checklist: getChecklist_() };
+}
+
+// Bulk tick/untick for one day's Select all / Deselect all button — the app
+// sends the day's item rows in a single write rather than one per item.
+function setChecklistDay_(rows, done) {
+  const sh = sheet_('checklist');
+  const list = (rows || []).map(Number).filter((r) => r >= 1);
+  const value = done ? 'TRUE' : 'FALSE';
+  list.forEach((r) => sh.getRange(checklistItemRow_(sh, r), 1).setValue(value));
+  return { rows: list, done: !!done };
 }
 
 // Tour column pairs start at column index 4 (0-based) and run until the
@@ -1096,6 +1179,10 @@ function requestSheetImportRun_() {
 function handleWrite_(body) {
   switch (body.action) {
     case 'toggleChecklist': return toggleChecklistItem_(body.row, body.done);
+    case 'setChecklistDay': return setChecklistDay_(body.rows, body.done);
+    case 'setChecklistText': return setChecklistText_(body.row, body.text);
+    case 'addChecklistItem': return addChecklistItem_(body.dayRow, body.text);
+    case 'deleteChecklistItem': return deleteChecklistItem_(body.row);
     case 'toggleArrived': return toggleArrived_(body.id, body.value);
     case 'setAllArrived': return setAllArrived_(body.value);
     case 'toggleCancelled': return toggleCancelled_(body.id, body.value);
@@ -1134,7 +1221,8 @@ function findRowById_(sh, id, startRow) {
 }
 
 function toggleChecklistItem_(row, done) {
-  sheet_('checklist').getRange(row, 1).setValue(done ? 'TRUE' : 'FALSE');
+  const sh = sheet_('checklist');
+  sh.getRange(checklistItemRow_(sh, row), 1).setValue(done ? 'TRUE' : 'FALSE');
   return { row: row, done: done };
 }
 

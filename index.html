@@ -158,6 +158,15 @@ html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text)}
 .chk-box.done::after{content:'✓';color:var(--green);font-size:12px}
 .chk-lbl{color:var(--text2);font-size:13px;line-height:1.4}
 .chk-lbl.done{color:var(--text4);text-decoration:line-through}
+/* Per-day toolbar (Select all / Edit items) sits inside the day's body, not
+   in its header — the header is one big tap target for expanding the day,
+   so a button in there would fight that tap. */
+.chk-tools{display:flex;gap:6px;padding:9px 13px;border-bottom:1px solid var(--border);flex-wrap:wrap}
+.chk-row.chk-edit{align-items:center;gap:7px}
+.chk-input{flex:1;min-width:0;background:var(--dark-bg);border:1px solid var(--dark-border);border-radius:8px;color:var(--dark-text);font-size:13px;padding:7px 9px;font-family:inherit;outline:none}
+.chk-input:focus{border-color:var(--border2)}
+.chk-icon-btn{flex-shrink:0;justify-content:center;padding:6px 9px}
+.chk-icon-btn i{font-size:14px}
 
 /* ─── TOURS SCREEN ──────────────────────────────────────────────── */
 .tabs{display:flex;gap:5px;margin-bottom:11px;overflow-x:auto;scrollbar-width:none}
@@ -835,35 +844,156 @@ function toggleArrived(id, el) {
 }
 
 // ─── CHECKLIST (collapsible per day, same pattern as Tickets) ────
+// Which days are expanded, and which are in edit mode, by day index. Both
+// live outside the DOM on purpose: loadData() re-renders this screen every
+// 45 seconds, and holding this state in DOM classes alone would collapse
+// the day Yenrri is working through (or drop her out of edit mode) at a
+// random moment mid-trip.
+const CHK_OPEN = new Set();
+const CHK_EDIT = new Set();
 function renderChecklist() {
   if (!DATA) return;
-  const days = DATA.checklist || [];
   const list = document.getElementById('checklist-list');
+  // Never re-render out from under a field being typed into — the 45s
+  // auto-refresh would otherwise wipe a half-typed item.
+  if (list.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') return;
+  const days = DATA.checklist || [];
   if (!days.length) { list.innerHTML = '<div class="empty-hint">No checklist items yet</div>'; return; }
   list.innerHTML = days.map((d, di) => {
     const done = d.items.filter(it => it.done).length;
+    const editing = CHK_EDIT.has(di);
+    const open = CHK_OPEN.has(di) || editing;
+    const allDone = d.items.length > 0 && done === d.items.length;
     return `<div class="tkt-sec">
-      <div class="tkt-hdr" onclick="toggleTicketSection(this)">
+      <div class="tkt-hdr" onclick="toggleChecklistDay(${di}, this)">
         <span class="tkt-title">${esc(d.day)}${d.title ? ' — ' + esc(d.title) : ''}</span>
-        <div class="tkt-meta"><span class="tkt-badge${done === d.items.length && d.items.length ? ' has' : ''}" id="ckb${di}">${done}/${d.items.length}</span>
-          <i class="ti ti-chevron-down tkt-chev"></i></div>
+        <div class="tkt-meta"><span class="tkt-badge${allDone ? ' has' : ''}" id="ckb${di}">${done}/${d.items.length}</span>
+          <i class="ti ti-chevron-down tkt-chev${open ? ' open' : ''}"></i></div>
       </div>
-      <div class="tkt-body">
-        ${d.items.map(it => `
-          <div class="chk-row"><div class="chk-box${it.done ? ' done' : ''}" onclick="toggleChecklistItem(${it.row}, this, ${di}, ${d.items.length})"></div>
+      <div class="tkt-body${open ? ' open' : ''}">
+        <div class="chk-tools">
+          ${d.items.length ? `<div class="sel-all-btn" onclick="toggleAllChecklist(${di})">
+            <i class="ti ti-${allDone ? 'square' : 'checkbox'}"></i>${allDone ? 'Deselect all' : 'Select all'}</div>` : ''}
+          <div class="sel-all-btn" onclick="toggleChecklistEdit(${di})">
+            <i class="ti ti-${editing ? 'check' : 'pencil'}"></i>${editing ? 'Done editing' : 'Edit items'}</div>
+        </div>
+        ${d.items.map(it => editing
+          ? `<div class="chk-row chk-edit">
+              <input class="chk-input" value="${esc(it.text)}" aria-label="Checklist item text"
+                onchange="setChecklistText(${it.row}, this.value, this)">
+              <div class="wa-btn chk-icon-btn" style="background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)" title="Delete this item" onclick="deleteChecklistItem(${it.row})"><i class="ti ti-x"></i></div>
+            </div>`
+          : `<div class="chk-row"><div class="chk-box${it.done ? ' done' : ''}" onclick="toggleChecklistItem(${it.row}, this, ${di}, ${d.items.length})"></div>
             <div class="chk-lbl${it.done ? ' done' : ''}">${esc(it.text)}</div></div>`).join('')}
+        ${editing ? `<div class="chk-row chk-edit">
+          <input class="chk-input" id="chk-new-${di}" placeholder="New item — type, then tap +" aria-label="New checklist item"
+            onkeydown="if (event.key === 'Enter') { event.preventDefault(); addChecklistItem(${di}); }">
+          <div class="wa-btn chk-icon-btn" title="Add this item" onclick="addChecklistItem(${di})"><i class="ti ti-plus"></i></div>
+        </div>` : ''}
       </div>
     </div>`;
   }).join('');
+}
+// Expanding a day is tracked in CHK_OPEN as well as the DOM (see above), so
+// this can't reuse toggleTicketSection.
+function toggleChecklistDay(di, hdr) {
+  if (CHK_OPEN.has(di)) CHK_OPEN.delete(di); else CHK_OPEN.add(di);
+  // Collapsing a day also leaves edit mode — reopening it in edit mode with
+  // no visible reason why would be baffling.
+  if (!CHK_OPEN.has(di)) CHK_EDIT.delete(di);
+  renderChecklist();
+}
+// Edit mode swaps that day's rows from tick-able labels to text fields with
+// a delete button, plus an "add" field at the end. Ticking items is the
+// everyday job, so it stays the default and editing is the mode you opt in
+// to — this keeps a mis-tap from renaming an item when Yenrri meant to
+// tick it.
+function toggleChecklistEdit(di) {
+  if (CHK_EDIT.has(di)) CHK_EDIT.delete(di); else { CHK_EDIT.add(di); CHK_OPEN.add(di); }
+  renderChecklist();
+}
+// Ticks or clears every item in one day. Only the clearing direction asks
+// first: it's the one that throws away work already done.
+function toggleAllChecklist(di) {
+  const d = (DATA.checklist || [])[di];
+  if (!d || !d.items.length) return;
+  const value = !d.items.every(it => it.done);
+  if (!value && !confirm(`Clear all ${d.items.length} ticks for ${d.day}?`)) return;
+  d.items.forEach(it => { it.done = value; });
+  renderChecklist();
+  write({ action: 'setChecklistDay', rows: d.items.map(it => it.row), done: value });
+}
+function setChecklistText(row, text, input) {
+  const trimmed = String(text).trim();
+  const item = checklistItem_(row);
+  // An item with no text is invisible to the backend's parser (a blank
+  // column B is how a deleted item is stored), so an empty box would look
+  // like the item silently vanished on the next refresh. Put the old text
+  // straight back in the field — restoring it via a re-render wouldn't
+  // work, since the field still has focus and renderChecklist deliberately
+  // leaves focused inputs alone.
+  if (!trimmed) {
+    alert('An item needs some text.\n\nUse the red × to delete it instead.');
+    if (input && item) input.value = item.text;
+    return;
+  }
+  if (item) item.text = trimmed;
+  if (input) input.value = trimmed;
+  write({ action: 'setChecklistText', row: row, text: trimmed });
+}
+// Blanks the item's row in the Sheet rather than deleting the row outright,
+// so the row numbers of every item below it stay valid (same approach as
+// deleteReceipt/clearFlightRow). The backend's parser skips rows with no
+// text, so a blanked row just stops appearing.
+function deleteChecklistItem(row) {
+  const item = checklistItem_(row);
+  if (!confirm(`Delete "${item ? item.text : 'this item'}"?\n\nIt's removed from the checklist for this tour.`)) return;
+  (DATA.checklist || []).forEach(d => { d.items = d.items.filter(it => it.row !== row); });
+  renderChecklist();
+  write({ action: 'deleteChecklistItem', row: row });
+}
+// Adding an item can shift the sheet rows below it, which would invalidate
+// every `row` the app is holding — so the backend returns the whole
+// re-parsed checklist and we swap it in wholesale rather than patching one
+// day's items locally.
+function addChecklistItem(di) {
+  const d = (DATA.checklist || [])[di];
+  const input = document.getElementById('chk-new-' + di);
+  if (!d || !input) return;
+  const text = input.value.trim();
+  if (!text) { input.focus(); return; }
+  input.value = '';
+  input.blur(); // so the re-render below isn't blocked by the focus guard
+  write({ action: 'addChecklistItem', dayRow: d.row, text: text }).then((res) => {
+    if (res.result && res.result.checklist) DATA.checklist = res.result.checklist;
+    renderChecklist();
+    const again = document.getElementById('chk-new-' + di);
+    if (again) again.focus(); // straight on to the next item
+  });
+}
+function checklistItem_(row) {
+  for (const d of (DATA.checklist || [])) {
+    const hit = d.items.find(it => it.row === row);
+    if (hit) return hit;
+  }
+  return null;
 }
 function toggleChecklistItem(row, box, dayIndex, dayTotal) {
   const done = !box.classList.contains('done');
   box.classList.toggle('done');
   box.nextElementSibling.classList.toggle('done');
+  // Keep DATA in step with the DOM patch above, so a later render (Select
+  // all, edit mode) doesn't work off a stale tick state.
+  const item = checklistItem_(row);
+  if (item) item.done = done;
   const sec = box.closest('.tkt-body');
   const doneCount = sec.querySelectorAll('.chk-box.done').length;
   const badge = document.getElementById('ckb' + dayIndex);
   if (badge) { badge.textContent = doneCount + '/' + dayTotal; badge.className = 'tkt-badge' + (doneCount === dayTotal ? ' has' : ''); }
+  // The day's button flips between Select all and Deselect all on the same
+  // boundary the badge does, so re-render the section when the last item
+  // lands (or the first one is un-ticked) to keep the label honest.
+  if (doneCount === dayTotal || (!done && doneCount === dayTotal - 1)) renderChecklist();
   write({ action: 'toggleChecklist', row: row, done: done });
 }
 
