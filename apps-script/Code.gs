@@ -593,15 +593,39 @@ function listFolderFiles_(folder, skipImages) {
 // getDocuments_() below, which fetches by ID directly for any entry here
 // that isn't found as a child of that folder, so a doc can be added here
 // regardless of where it actually sits in Drive.
+//
+// The 11-Day and 13-Day tour recommendations/briefings used to be listed
+// here — Maree asked for them filed under each tour's own Daily
+// Itineraries folder instead (see ITINERARY_EXTRA_DOCS_ below), so this is
+// empty for now but left in place for anything that belongs at the very
+// top in future.
 const TOP_DOC_ORDER_ = [
-  '1rVzAqg6ezKoSDYkJRvUi1eccdq5T4zper6R5pC7Vpfw', // 11-Day Tour Recommendations for Peru
-  '1ZV-Idj_OjGfBZ4IoAdnt4KWvCSOZSx2f_J3Lp7mKVFE', // 11-Day Briefing
-  '1TGaOAj1h3jJU-jxa5s4wjnbfXB9hzbDp9jZ9B6Mhe-s', // 13-Day Tour Recommendations for Peru (was "Recommendations for Peru")
-  '1sz_LpQy1q_3ec_oR3w3ZOKIx2fWtEVSAgdZJHUXWbhw', // 13-Day Briefing (just titled "Briefing" in Drive)
   // '196wurKBKoG-i6UG6x--fhxqIBBoKxkcuVHNu_GHH4d4', // OLD Briefing (was "A 2 Briefing") — now in Trash, removed from this list
 ];
+// Filed inside a specific "Daily Itineraries" tour folder's section rather
+// than shown separately — keyed by that tour folder's Drive name
+// (lowercased), same fetch-by-ID approach as TOP_DOC_ORDER_ above since
+// these don't live inside that folder either. Shown ahead of the folder's
+// own day-by-day files, as the overview docs for that tour.
+const ITINERARY_EXTRA_DOCS_ = {
+  'peru & the caribbean': [
+    '1rVzAqg6ezKoSDYkJRvUi1eccdq5T4zper6R5pC7Vpfw', // 11-Day Tour Recommendations for Peru
+    '1ZV-Idj_OjGfBZ4IoAdnt4KWvCSOZSx2f_J3Lp7mKVFE', // 11-Day Briefing
+  ],
+  'ultimate south america adventure': [
+    '1TGaOAj1h3jJU-jxa5s4wjnbfXB9hzbDp9jZ9B6Mhe-s', // 13-Day Tour Recommendations for Peru (was "Recommendations for Peru")
+    '1sz_LpQy1q_3ec_oR3w3ZOKIx2fWtEVSAgdZJHUXWbhw', // 13-Day Briefing (just titled "Briefing" in Drive)
+  ],
+};
 const EXCLUDED_DOC_IDS_ = [
   '1Zilb4HarBOgqC2YBQubscLTH-0jdkfXXtfp8O7opTp4', // Andean Wings Sotupa Eco Lodge Menu Selection
+  // The four itinerary docs above, in case they ever do get moved inside
+  // the TripADeal root folder itself — without this they'd double up in
+  // "Other documents" as well as their itinerary section.
+  '1rVzAqg6ezKoSDYkJRvUi1eccdq5T4zper6R5pC7Vpfw',
+  '1ZV-Idj_OjGfBZ4IoAdnt4KWvCSOZSx2f_J3Lp7mKVFE',
+  '1TGaOAj1h3jJU-jxa5s4wjnbfXB9hzbDp9jZ9B6Mhe-s',
+  '1sz_LpQy1q_3ec_oR3w3ZOKIx2fWtEVSAgdZJHUXWbhw',
 ];
 
 // The merged boarding-pass PDFs land here (written directly by
@@ -702,13 +726,14 @@ function getDocuments_() {
 
   const rootFiles = listFolderFiles_(root).filter((f) => EXCLUDED_DOC_IDS_.indexOf(f.id) === -1);
 
-  // Key Documents don't have to live inside the TripADeal folder — fall
-  // back to fetching by ID directly for any entry not found as a child of
-  // it. A doc this account can't access (wrong ID, no sharing), or that's
-  // been moved to Trash (Drive keeps a trashed file's ID resolvable for a
-  // while, it doesn't just disappear — getFileById would otherwise still
-  // return it here), is skipped rather than breaking the whole Docs tab.
-  const topFiles = TOP_DOC_ORDER_.map((id) => {
+  // Key Documents (and the ITINERARY_EXTRA_DOCS_ injected below) don't have
+  // to live inside the TripADeal folder — fall back to fetching by ID
+  // directly for any entry not found as a child of it. A doc this account
+  // can't access (wrong ID, no sharing), or that's been moved to Trash
+  // (Drive keeps a trashed file's ID resolvable for a while, it doesn't
+  // just disappear — getFileById would otherwise still return it here), is
+  // skipped rather than breaking the whole Docs tab.
+  const fetchDocById_ = (id) => {
     const found = rootFiles.find((f) => f.id === id);
     if (found) return found;
     try {
@@ -718,7 +743,8 @@ function getDocuments_() {
     } catch (e) {
       return null;
     }
-  }).filter(Boolean);
+  };
+  const topFiles = TOP_DOC_ORDER_.map(fetchDocById_).filter(Boolean);
   if (topFiles.length) sections.push({ name: 'Key Documents', files: topFiles });
 
   // Any subfolder Maree creates directly inside the TripADeal folder shows
@@ -765,7 +791,12 @@ function getDocuments_() {
       const grandchildren = sub.getFolders();
       while (grandchildren.hasNext()) {
         const g = grandchildren.next();
-        groups.push({ name: g.getName(), files: listFolderFiles_(g, false) });
+        // Docs filed against this specific tour (ITINERARY_EXTRA_DOCS_)
+        // lead the list, ahead of the folder's own day-by-day files — they
+        // read as that tour's overview, not just another day.
+        const extraIds = ITINERARY_EXTRA_DOCS_[g.getName().toLowerCase()] || [];
+        const extraFiles = extraIds.map(fetchDocById_).filter(Boolean);
+        groups.push({ name: g.getName(), files: extraFiles.concat(listFolderFiles_(g, false)) });
       }
       groups.sort((a, b) => a.name.localeCompare(b.name));
       nestedFirst.push({ name: sub.getName(), isHeading: true });
