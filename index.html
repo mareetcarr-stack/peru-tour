@@ -301,6 +301,11 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
 .rec-icon{color:var(--red);font-size:15px;flex-shrink:0}
 .rec-txt{color:var(--text);font-size:12px;word-break:break-word;overflow-wrap:anywhere;min-width:0}
 .wa-btn{background:var(--green-bg);border:1px solid var(--green-border);border-radius:8px;padding:4px 9px;color:var(--green);font-size:10px;display:flex;align-items:center;gap:4px;cursor:pointer;font-weight:600}
+
+/* setup screen — headings white + larger so each area is easy to tell apart,
+   and all its instructional/grey text white so it's easier to read */
+#screen-setup .sec-label{color:var(--text);font-size:13px}
+#screen-setup .hint{color:var(--text)}
 </style>
 </head>
 <body>
@@ -434,7 +439,7 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
       <div id="sheetimport-card" class="tot-block"></div>
       <div class="sec-label" style="margin-top:16px">Check Documents</div>
       <div class="hint">Save any of the following to the document-inbox folder in Google Drive under any filename — Check Documents automatically works out what each one is and files it away, no need to sort them yourself. Safe to run any time, with any subset of these present — anything already checked and moved on a previous run is simply skipped, not treated as missing:</div>
-      <ul style="color:var(--text4);font-size:10px;line-height:1.7;margin:0 0 10px 16px;padding:0">
+      <ul style="color:var(--text);font-size:10px;line-height:1.7;margin:0 0 10px 16px;padding:0">
         <li>Train tickets (PDF)</li>
         <li>Machu Picchu entrance tickets (PDF)</li>
         <li>Bus tickets (PDF)</li>
@@ -1637,10 +1642,10 @@ function renderTicketCheckCard() {
   const busy = s.status === 'requested' || s.status === 'running';
   let statusLine = TICKETCHECK_STATUS_LABEL[s.status] || s.status;
   if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
-  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text2)';
+  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text)';
   card.innerHTML = `
     <div class="tot-row"><div class="tot-lbl">Status</div><div style="color:${statusColor};font-size:11px;font-weight:600;text-align:right;max-width:70%">${esc(statusLine)}</div></div>
-    <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text4)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
+    <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
     <div style="margin-top:10px">
       <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="requestTicketCheckRun()">
         <i class="ti ti-checkbox"></i>&nbsp;${busy ? 'In progress…' : 'Check Documents'}
@@ -1671,7 +1676,7 @@ function renderFlightScheduleCard() {
   const busy = s.status === 'requested' || s.status === 'running';
   let statusLine = FLIGHTSCHEDULE_STATUS_LABEL[s.status] || s.status;
   if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
-  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text2)';
+  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text)';
   // The sheet's Traveller Data / FLIGHT STATUS cells this reads have
   // changed since the last time this was requested — the two background
   // monitors are still scheduled off the OLD data until this is re-run.
@@ -1680,7 +1685,7 @@ function renderFlightScheduleCard() {
     : '';
   card.innerHTML = `
     <div class="tot-row"><div class="tot-lbl">Status</div><div style="color:${statusColor};font-size:11px;font-weight:600;text-align:right;max-width:70%">${esc(statusLine)}</div></div>
-    <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text4)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
+    <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
     ${staleWarning}
     <div style="margin-top:10px">
       <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="requestFlightScheduleRun()">
@@ -1711,7 +1716,7 @@ function renderSheetImportCard() {
   const busy = s.status === 'requested' || s.status === 'running';
   let statusLine = SHEETIMPORT_STATUS_LABEL[s.status] || s.status;
   if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
-  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text2)';
+  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text)';
 
   // A full import (traveller data + all the sheets it builds + a LATAM
   // check-in lookup per booking) can take several minutes — without this,
@@ -1730,13 +1735,13 @@ function renderSheetImportCard() {
       etaText = ` · ~${remainingMin} min left`;
     }
     progressHtml = `
-      <div class="tot-row"><div class="tot-lbl">Progress</div><div style="font-size:11px;color:var(--text2)">${cur}/${total} bookings${etaText}</div></div>
+      <div class="tot-row"><div class="tot-lbl">Progress</div><div style="font-size:11px;color:var(--text)">${cur}/${total} bookings${etaText}</div></div>
       <div class="prog-track"><div class="prog-fill" style="width:${pct}%"></div></div>`;
   }
 
   card.innerHTML = `
     <div class="tot-row"><div class="tot-lbl">Status</div><div style="color:${statusColor};font-size:11px;font-weight:600;text-align:right;max-width:70%">${esc(statusLine)}</div></div>
-    <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text4)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
+    <div class="tot-row"><div class="tot-lbl">Watcher</div><div style="color:${watcherOnline ? 'var(--green)' : 'var(--text)'};font-size:11px">${watcherOnline ? 'Online' : (heartbeatAgo ? 'Last seen ' + heartbeatAgo : 'Never seen')}</div></div>
     ${progressHtml}
     <div style="margin-top:10px">
       <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="requestSheetImportRun()">
