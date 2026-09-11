@@ -397,8 +397,10 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
 
       <!-- RESERVATIONS -->
       <div id="tab-reservations" style="display:none">
-        <div class="sec-label">Reservations</div>
-        <div id="reservations-list"><div class="empty-hint">Loading…</div></div>
+        <div class="sec-label">Hotels</div>
+        <div id="reservations-hotels-list"><div class="empty-hint">Loading…</div></div>
+        <div class="sec-label" style="margin-top:16px">Restaurants</div>
+        <div id="reservations-restaurants-list"><div class="empty-hint">Loading…</div></div>
       </div>
 
       <!-- INFO & DIET -->
@@ -1297,10 +1299,12 @@ function setHealth(id, value) {
 const RES_ICON_ = { Hotel: 'ti-building', Restaurant: 'ti-tools-kitchen-2' };
 function renderReservations() {
   if (!DATA) return;
-  const list = document.getElementById('reservations-list');
+  const hotelsList = document.getElementById('reservations-hotels-list');
+  const restaurantsList = document.getElementById('reservations-restaurants-list');
   const rows = DATA.reservations || [];
-  if (!rows.length) { list.innerHTML = '<div class="empty-hint">No reservations yet — upload the tour\'s Travel Plan to document-inbox and run Check Documents</div>'; return; }
-  list.innerHTML = rows.map(r => `
+  const emptyMsg = '<div class="empty-hint">No reservations yet — upload the tour\'s Travel Plan to document-inbox and run Check Documents</div>';
+  if (!rows.length) { hotelsList.innerHTML = emptyMsg; restaurantsList.innerHTML = ''; return; }
+  const cardHtml = r => `
     <div class="rec-card">
       <div class="rec-lnk" style="border-bottom:none;padding-bottom:0;flex-direction:column;align-items:stretch;gap:8px">
         <div class="rec-left" style="min-width:0"><i class="ti ${RES_ICON_[r.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
@@ -1310,7 +1314,15 @@ function renderReservations() {
           <div class="wa-btn" onclick="waShareTo('${jsStrLit_(r.phone)}', '${jsStrLit_(r.message)}')" style="flex-shrink:0"><i class="ti ti-brand-whatsapp"></i>Share</div>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  // Puerto Maldonado's lodge is tagged type "Hotel" by the parser even
+  // though its message covers both hotel and restaurant service in one
+  // (see combinedLodge in ticket-checker.js) — it belongs with the hotels,
+  // not split out or duplicated into Restaurants.
+  const hotels = rows.filter(r => r.type === 'Hotel');
+  const restaurants = rows.filter(r => r.type !== 'Hotel');
+  hotelsList.innerHTML = hotels.length ? hotels.map(cardHtml).join('') : '<div class="empty-hint">No hotel reservations yet</div>';
+  restaurantsList.innerHTML = restaurants.length ? restaurants.map(cardHtml).join('') : '<div class="empty-hint">No restaurant reservations yet</div>';
 }
 // Every reservation row sharing this venue name gets the number applied
 // immediately (not just the one card that was edited) — the same hotel
