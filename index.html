@@ -354,8 +354,7 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
         <div class="tab" data-view="tickets" onclick="switchTab('tickets',this)">Tickets</div>
         <div class="tab" data-view="reservations" onclick="switchTab('reservations',this)">Reservations</div>
         <div class="tab" data-view="info" onclick="switchTab('info',this)">Info &amp; diet</div>
-        <div class="tab" data-view="receipts" onclick="switchTab('receipts',this)">Receipts</div>
-        <div class="tab" data-view="wise" onclick="switchTab('wise',this)">Wise</div>
+        <div class="tab" data-view="receipts" onclick="switchTab('receipts',this)">Receipts &amp; Wise</div>
       </div>
 
       <!-- OPTIONAL TOURS -->
@@ -409,17 +408,13 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
         <div id="info-list"><div class="empty-hint">Loading…</div></div>
       </div>
 
-      <!-- RECEIPTS -->
+      <!-- RECEIPTS & WISE -->
       <div id="tab-receipts" style="display:none">
         <div class="sec-label">Receipts</div>
         <div id="receipts-list"><div class="empty-hint">Loading…</div></div>
         <div class="sec-label" style="margin-top:16px">Submit to SUNAT</div>
         <div id="sunat-card" class="tot-block"></div>
-      </div>
-
-      <!-- WISE -->
-      <div id="tab-wise" style="display:none">
-        <div class="sec-label">Wise payment details</div>
+        <div class="sec-label" style="margin-top:16px">Wise payment details</div>
         <div id="wise-list"><div class="empty-hint">Loading…</div></div>
       </div>
 
@@ -593,8 +588,8 @@ function hardRefresh() {
   // Stash it and restore after the reload instead.
   const active = document.querySelector('.screen.active');
   // The Tours screen has its own pill tabs (Tours/Tickets/Reservations/
-  // Info/Receipts/Wise) nested inside it — without also saving which one
-  // was selected,
+  // Info/Receipts & Wise) nested inside it — without also saving which
+  // one was selected,
   // a refresh from e.g. Receipts would restore the Tours screen but always
   // land back on its default "Tours" pill.
   const activeSubTab = document.querySelector('#tour-tabs .tab.active');
@@ -1861,7 +1856,7 @@ function renderWise() {
 
 // ─── SUB-TABS (Tours screen) ─────────────────────────────────────
 function switchTab(view, el) {
-  ['tours', 'tickets', 'reservations', 'info', 'receipts', 'wise'].forEach(v => {
+  ['tours', 'tickets', 'reservations', 'info', 'receipts'].forEach(v => {
     const e = document.getElementById('tab-' + v);
     if (e) e.style.display = v === view ? 'block' : 'none';
   });
