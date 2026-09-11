@@ -1278,6 +1278,16 @@ function setHealth(id, value) {
 // Deliberately NOT editable here — any tweak happens in the WhatsApp
 // draft itself once shared, rather than doubling up on an edit surface
 // (and saving the vertical space a textarea would take).
+//
+// The phone number field IS editable, though — it's a small persistent
+// lookup (VENUE CONTACTS, via Code.gs's getVenueContacts_/setVenuePhone_)
+// keyed by venue name, separate from RESERVATIONS itself (which gets
+// wiped and rewritten fresh every time a new Travel Plan is imported).
+// Hotels/restaurants repeat tour after tour on the same routes, so a
+// number entered once here keeps auto-filling the WhatsApp recipient on
+// every future tour that mentions the same venue — addressing Yenrri's
+// feedback that he still had to search for the contact himself every
+// time, even though the message itself was already ready to go.
 const RES_ICON_ = { Hotel: 'ti-building', Restaurant: 'ti-tools-kitchen-2' };
 function renderReservations() {
   if (!DATA) return;
@@ -1289,9 +1299,20 @@ function renderReservations() {
       <div class="rec-lnk" style="border-bottom:none;padding-bottom:0;flex-direction:column;align-items:stretch;gap:8px">
         <div class="rec-left" style="min-width:0"><i class="ti ${RES_ICON_[r.type] || 'ti-file'} rec-icon" style="color:var(--blue)"></i>
           <span class="rec-txt" style="color:var(--text)">${esc(r.name)} <span style="opacity:.6;font-weight:400">· ${esc(r.dateInfo)}</span></span></div>
-        <div class="wa-btn" onclick="waShare('${jsStrLit_(r.message)}')" style="justify-content:center;width:100%"><i class="ti ti-brand-whatsapp"></i>Share</div>
+        <input class="diet-input" type="tel" placeholder="WhatsApp number incl. country code, e.g. 51984123456 (once entered, auto-fills every time)" value="${esc(r.phone)}" onchange="setVenuePhone('${jsStrLit_(r.name)}', this.value)">
+        <div class="wa-btn" onclick="waShareTo('${jsStrLit_(r.phone)}', '${jsStrLit_(r.message)}')" style="justify-content:center;width:100%"><i class="ti ti-brand-whatsapp"></i>Share</div>
       </div>
     </div>`).join('');
+}
+// Every reservation row sharing this venue name gets the number applied
+// immediately (not just the one card that was edited) — the same hotel
+// often appears twice in one tour (e.g. a return stay after a Machu
+// Picchu side-trip), and this makes both cards' Share buttons correct
+// right away rather than waiting on the next 45s poll.
+function setVenuePhone(name, value) {
+  (DATA.reservations || []).forEach(r => { if (r.name === name) r.phone = value; });
+  renderReservations();
+  write({ action: 'setVenuePhone', name: name, value: value });
 }
 
 // ─── PLACES ──────────────────────────────────────────────────────
@@ -1307,6 +1328,21 @@ function renderPlaces() {
     ? places.sightseeing.map(p => card(p, 'ti-map-pin')).join('') : '<div class="empty-hint">None yet</div>';
 }
 function waShare(url) { window.location.href = 'whatsapp://send?text=' + encodeURIComponent(url); }
+// Recipient-aware version used only by Reservations cards, where a phone
+// number may already be on file in VENUE CONTACTS (see renderReservations'
+// own comment) — opens straight into that contact's chat instead of a
+// blank compose screen. Falls back to today's blank-recipient behaviour
+// when no number has been saved for that venue yet. Non-digit characters
+// (spaces, dashes, a leading +) are stripped since WhatsApp's own link
+// format expects digits only, full international number including
+// country code.
+function waShareTo(phone, text) {
+  const digits = String(phone || '').replace(/\D/g, '');
+  const url = digits
+    ? `whatsapp://send?phone=${digits}&text=${encodeURIComponent(text)}`
+    : `whatsapp://send?text=${encodeURIComponent(text)}`;
+  window.location.href = url;
+}
 
 // ─── DOCUMENTS (Drive folder — tap opens Google's own editor) ───────────
 const DOC_ICON = { doc: 'ti-file-text', sheet: 'ti-table', slides: 'ti-presentation', pdf: 'ti-file-type-pdf' };

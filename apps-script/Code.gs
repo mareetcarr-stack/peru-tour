@@ -49,6 +49,7 @@ const SHEET_NAMES = {
   flightschedule: 'FLIGHTSCHEDULE_TRIGGER',
   sheetimport: 'SHEETIMPORT_TRIGGER',
   reservations: 'RESERVATIONS',
+  venueContacts: 'VENUE CONTACTS',
 };
 
 // The "TripADeal" Drive folder (Daily Itineraries, Tour Leader Reports,
@@ -1246,6 +1247,7 @@ function handleWrite_(body) {
     case 'setBirthday': return setBirthday_(body.id, body.value);
     case 'setDiet': return setDiet_(body.id, body.value);
     case 'setHealth': return setHealth_(body.id, body.value);
+    case 'setVenuePhone': return setVenuePhone_(body.name, body.value);
     case 'clearArrivalAssumed': return clearArrivalAssumed_();
     case 'dismissFlightAlert': return dismissFlightAlert_(body.row, body.status);
     case 'clearFlightRow': return clearFlightRow_(body.row);
@@ -1437,23 +1439,90 @@ function deleteReceipt_(row) {
 // not exist yet on a trip that hasn't had one imported — return an empty
 // list rather than the throwing sheet_() helper in that case, so a
 // missing tab doesn't break the whole Docs/Info tab data load.
+//
+// Each row's `phone` is joined in from VENUE CONTACTS (see
+// getVenueContacts_ below) by venue name — RESERVATIONS itself carries no
+// phone number of its own, since it's wiped and rewritten from scratch by
+// ticket-checker.js every time a new Travel Plan is imported, while VENUE
+// CONTACTS is a separate, persistent lookup that survives that rewrite.
 function getReservations_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(SHEET_NAMES.reservations);
   if (!sh) return [];
+  const contacts = getVenueContacts_();
   const rows = sh.getDataRange().getValues();
   const out = [];
   for (let r = 1; r < rows.length; r++) {
     const row = rows[r];
     if (!row[1]) continue; // no name → blank row
+    const name = String(row[1] || '').trim();
     out.push({
       row: r + 1,
       type: String(row[0] || '').trim(),
-      name: String(row[1] || '').trim(),
+      name: name,
       dateInfo: String(row[2] || '').trim(),
       message: String(row[3] || ''),
+      phone: contacts[name.toLowerCase()] || '',
     });
   }
   return out;
+}
+
+// VENUE CONTACTS is a persistent lookup, separate from RESERVATIONS —
+// hotels and restaurants repeat tour after tour on the same routes, so a
+// WhatsApp number entered once here keeps auto-filling the recipient on
+// every future tour that mentions the same venue, instead of Yenrri
+// having to search for the contact himself every single time (his
+// feedback on the original reconfirmation-message feature). Keyed by
+// venue name exactly as parseTravelPlanDocx extracts it from the agency's
+// Travel Plan, matched case-insensitively/trimmed since that text can
+// vary slightly in capitalisation between exports.
+function getVenueContacts_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const sh = ss.getSheetByName(SHEET_NAMES.venueContacts);
+  if (!sh) return {};
+  const rows = sh.getDataRange().getValues();
+  const map = {};
+  for (let r = 1; r < rows.length; r++) {
+    const name = String(rows[r][0] || '').trim();
+    const phone = String(rows[r][1] || '').trim();
+    if (name && phone) map[name.toLowerCase()] = phone;
+  }
+  return map;
+}
+
+// VENUE CONTACTS won't exist at all until the first phone number is ever
+// saved — created here on demand rather than ahead of time, same pattern
+// ticket-checker.js's ensureReservationsHeader uses for RESERVATIONS
+// itself.
+function ensureVenueContactsSheet_() {
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  let sh = ss.getSheetByName(SHEET_NAMES.venueContacts);
+  if (!sh) {
+    sh = ss.insertSheet(SHEET_NAMES.venueContacts);
+    sh.getRange(1, 1, 1, 2).setValues([['Name', 'WhatsApp Number']]);
+  }
+  return sh;
+}
+
+// Upserts by name (case-insensitive/trimmed) rather than appending a new
+// row every time an existing venue's number gets edited — a venue only
+// ever needs one row here, no matter how many tours or reservations
+// mention it.
+function setVenuePhone_(name, value) {
+  const trimmedName = String(name || '').trim();
+  if (!trimmedName) throw new Error('Venue name is required');
+  const sh = ensureVenueContactsSheet_();
+  const rows = sh.getDataRange().getValues();
+  let targetRow = -1;
+  for (let r = 1; r < rows.length; r++) {
+    if (String(rows[r][0] || '').trim().toLowerCase() === trimmedName.toLowerCase()) { targetRow = r + 1; break; }
+  }
+  if (targetRow === -1) {
+    targetRow = sh.getLastRow() + 1;
+    sh.getRange(targetRow, 1).setValue(trimmedName);
+  }
+  sh.getRange(targetRow, 2).setValue(value || '');
+  return { name: trimmedName, value: value };
 }
 
