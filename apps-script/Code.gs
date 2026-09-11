@@ -628,6 +628,25 @@ const EXCLUDED_DOC_IDS_ = [
   '1sz_LpQy1q_3ec_oR3w3ZOKIx2fWtEVSAgdZJHUXWbhw',
 ];
 
+// Both getBoardingPassDocs_() and getPassportDocs_() need every file in
+// their folder set to "Anyone with the link can view" — but they used to
+// call setSharing() unconditionally on EVERY file on EVERY load (this
+// function runs as part of getAllData_(), which the app polls every 45s
+// while visible). setSharing() is a real Drive API write, not a free
+// no-op when the sharing is already correct — with a folder full of
+// passes/scans that's several redundant round trips on every single
+// refresh, and Drive API latency is exactly what makes a reload
+// occasionally take much longer than usual. Checking the file's current
+// sharing first means the write only actually happens for a genuinely new
+// or wrongly-shared file.
+function ensurePublicViewSharing_(file) {
+  if (file.getSharingAccess() === DriveApp.Access.ANYONE_WITH_LINK &&
+      file.getSharingPermission() === DriveApp.Permission.VIEW) {
+    return; // already shared correctly — skip the redundant write
+  }
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+}
+
 // The merged boarding-pass PDFs land here (written directly by
 // boarding-pass-runner.js on the owner's Mac, synced up via Google Drive
 // Desktop) — a different folder from the TripADeal one above, so it's
@@ -645,7 +664,7 @@ function getBoardingPassDocs_() {
   const files = listFolderFiles_(folder);
   files.forEach((f) => {
     try {
-      DriveApp.getFileById(f.id).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      ensurePublicViewSharing_(DriveApp.getFileById(f.id));
     } catch (e) {
       // sharing change failed (rare) — file still appears, just may not
       // be openable by the recipient until this is retried.
@@ -704,7 +723,7 @@ function getPassportDocs_() {
   const files = listFolderFiles_(folder);
   files.forEach((f) => {
     try {
-      DriveApp.getFileById(f.id).setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      ensurePublicViewSharing_(DriveApp.getFileById(f.id));
     } catch (e) {
       // sharing change failed (rare) — file still appears, just may not
       // be openable by the recipient until this is retried.
