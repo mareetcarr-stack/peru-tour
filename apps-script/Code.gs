@@ -628,6 +628,27 @@ const EXCLUDED_DOC_IDS_ = [
   '1TGaOAj1h3jJU-jxa5s4wjnbfXB9hzbDp9jZ9B6Mhe-s',
   '1sz_LpQy1q_3ec_oR3w3ZOKIx2fWtEVSAgdZJHUXWbhw',
 ];
+// Docs matched by Drive file ID (permanent — survives Maree moving the file
+// between folders, e.g. she filed the Menu Selection sheet under a specific
+// tour's Daily Itineraries folder rather than a dedicated folder) that need
+// their WhatsApp Share link to actually let the recipient edit the doc
+// (tick their own checkboxes) rather than just view it — see
+// ensurePublicEditSharing_ and applyEditableSharing_ below, and the
+// matching /menu selection/i check in index.html's isShareableFile().
+const EDITABLE_SHARE_DOC_IDS_ = [
+  '1Zilb4HarBOgqC2YBQubscLTH-0jdkfXXtfp8O7opTp4', // Andean Wings Sotupa Eco Lodge Menu Selection
+];
+function applyEditableSharing_(files) {
+  files.forEach((f) => {
+    if (EDITABLE_SHARE_DOC_IDS_.indexOf(f.id) === -1) return;
+    try {
+      ensurePublicEditSharing_(DriveApp.getFileById(f.id));
+    } catch (e) {
+      // sharing change failed (rare) — file still appears, just may not
+      // be editable by the recipient until this is retried.
+    }
+  });
+}
 
 // Both getBoardingPassDocs_() and getPassportDocs_() need every file in
 // their folder set to "Anyone with the link can view" — but they used to
@@ -646,6 +667,18 @@ function ensurePublicViewSharing_(file) {
     return; // already shared correctly — skip the redundant write
   }
   file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+}
+
+// Same idea as ensurePublicViewSharing_ above, but for docs where the
+// WhatsApp recipient needs to actually change something (e.g. tick their
+// own boxes on the Menu Selections sheet) rather than just look at it —
+// see SHAREABLE_SUBFOLDER_NAMES_ below.
+function ensurePublicEditSharing_(file) {
+  if (file.getSharingAccess() === DriveApp.Access.ANYONE_WITH_LINK &&
+      file.getSharingPermission() === DriveApp.Permission.EDIT) {
+    return; // already shared correctly — skip the redundant write
+  }
+  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.EDIT);
 }
 
 // The merged boarding-pass PDFs land here (written directly by
@@ -816,16 +849,21 @@ function getDocuments_() {
         // read as that tour's overview, not just another day.
         const extraIds = ITINERARY_EXTRA_DOCS_[g.getName().toLowerCase()] || [];
         const extraFiles = extraIds.map(fetchDocById_).filter(Boolean);
-        groups.push({ name: g.getName(), files: extraFiles.concat(listFolderFiles_(g, false)) });
+        const dayFiles = listFolderFiles_(g, false);
+        applyEditableSharing_(extraFiles);
+        applyEditableSharing_(dayFiles);
+        groups.push({ name: g.getName(), files: extraFiles.concat(dayFiles) });
       }
       groups.sort((a, b) => a.name.localeCompare(b.name));
       nestedFirst.push({ name: sub.getName(), isHeading: true });
       groups.forEach((g) => nestedFirst.push({ name: g.name, files: g.files, collapsible: true }));
       continue;
     }
+    const subFiles = listFolderFiles_(sub, false);
+    applyEditableSharing_(subFiles);
     subfolderSections.push({
       name: sub.getName(),
-      files: listFolderFiles_(sub, false),
+      files: subFiles,
       collapsible: !isFlattened,
     });
   }

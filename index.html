@@ -1374,7 +1374,14 @@ function renderDocuments() {
   // those specific files — not the whole Key Documents section, since the
   // Briefing docs sit there too and aren't meant to be shared the same way.
   const SHAREABLE_SECTIONS_ = ['Boarding Passes', 'Passports'];
-  const isShareableFile = (name, f) => SHAREABLE_SECTIONS_.includes(name) || /recommendations/i.test(f.name);
+  // Per-hotel menu-choice sheets (e.g. Andean Wings Sotupa Eco Lodge) also
+  // get a Share button, matched by filename like Recommendations rather
+  // than by section — Maree files these wherever makes sense per tour
+  // (e.g. inside that tour's own Daily Itineraries folder), not one fixed
+  // location. Unlike the other shareable docs, Code.gs's
+  // EDITABLE_SHARE_DOC_IDS_ shares these as "Anyone with the link can EDIT"
+  // (not view-only) so whoever opens the link can tick their own checkboxes.
+  const isShareableFile = (name, f) => SHAREABLE_SECTIONS_.includes(name) || /recommendations|menu selection/i.test(f.name);
   // Boarding passes clear themselves out the next time a full batch is
   // regenerated. Passports have NO equivalent auto-clear at all — a new
   // upload just gets added alongside whatever's already there (numbered
