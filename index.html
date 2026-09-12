@@ -550,8 +550,17 @@ function setSync(state) {
   if (state === 'saved') setTimeout(() => { if (dot.className === 'saved') dot.className = ''; }, 1500);
 }
 
+// Counts writes currently in flight. The 45s (and 10s "busy") polls below
+// skip loadData() while this is above zero — otherwise a poll that was
+// already due could land right after an optimistic UI update (e.g. ticking
+// the Tips checkbox) but before Apps Script's write has actually committed,
+// overwrite DATA with the pre-write value, and re-render the checkbox back
+// to unchecked a few seconds after the user ticked it. This was reported
+// as "I tick Tips as paid and it resets itself back to unpaid moments later".
+let pendingWrites = 0;
 function write(payload) {
   setSync('saving');
+  pendingWrites++;
   return apiPost(payload).then((res) => {
     if (!res.ok) throw new Error(res.error || 'Write failed');
     setSync('saved');
@@ -561,7 +570,7 @@ function write(payload) {
     alert('Could not save — check your connection and try again.\n' + err.message);
     loadData(); // re-sync from the sheet to undo any optimistic change
     throw err;
-  });
+  }).finally(() => { pendingWrites--; });
 }
 
 // ─── DATA LOAD / RENDER ALL ──────────────────────────────────────
@@ -1945,7 +1954,7 @@ restoreLastScreen(); // do this before loadData() starts — it's a network
                       // fetch, and waiting for it first means Flights (the
                       // default markup) paints, then jumps to the saved tab
 loadData();
-setInterval(() => { if (document.visibilityState === 'visible') loadData(); }, 45000);
+setInterval(() => { if (document.visibilityState === 'visible' && pendingWrites === 0) loadData(); }, 45000);
 // FX rates move slowly — refresh roughly hourly rather than every 45s poll.
 setInterval(() => { if (document.visibilityState === 'visible') loadRates(); }, 60 * 60 * 1000);
 
@@ -1955,7 +1964,7 @@ setInterval(() => { if (document.visibilityState === 'visible') loadRates(); }, 
 // boarding-pass run especially can take several minutes, and 45s gaps
 // made it look stalled even when it wasn't.
 setInterval(() => {
-  if (document.visibilityState !== 'visible' || !DATA) return;
+  if (document.visibilityState !== 'visible' || !DATA || pendingWrites > 0) return;
   const busy = (obj) => obj && (obj.status === 'requested' || obj.status === 'running');
   if (busy(DATA.sunat) || busy(DATA.boardingPass) || busy(DATA.ticketCheck) || busy(DATA.flightSchedule) || busy(DATA.sheetImport)) loadData();
 }, 10000);
