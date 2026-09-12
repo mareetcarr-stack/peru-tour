@@ -573,13 +573,38 @@ function write(payload) {
   }).finally(() => { pendingWrites--; });
 }
 
+// A poll-triggered refresh rebuilds a section's HTML from scratch (same
+// innerHTML-replace pattern every render* function uses) — fine for a
+// checkbox, but if it lands while someone is mid-keystroke in a text/number
+// input (diet notes, a receipt description, a tour price...), it destroys
+// that input's DOM node — and the un-committed characters they've typed —
+// out from under them, since onchange only fires on blur, not per
+// keystroke. Reported as Info & Diet notes "resetting" while being typed;
+// same root cause as the Tips-checkbox fix above, just for typing instead
+// of a click. Skip re-rendering a section here (during the automatic poll
+// only — a user's own action still re-renders its own section normally)
+// whenever focus is currently inside one of its editable fields.
+function isEditingWithin(containerId) {
+  const el = document.activeElement;
+  if (!el || !(el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA')) return false;
+  const container = document.getElementById(containerId);
+  return !!(container && container.contains(el));
+}
+
 // ─── DATA LOAD / RENDER ALL ──────────────────────────────────────
 let DATA = null;
 function loadData() {
   return apiGet({ action: 'data' }).then((res) => {
     if (!res.ok) throw new Error(res.error);
     DATA = res.data;
-    renderFlights(); renderPassengers(); renderChecklist(); renderTours(); renderTickets(); renderInfo(); renderReservations(); renderPlaces(); renderReceipts(); renderSunatCard(); renderBoardingPassCard(); renderTicketCheckCard(); renderFlightScheduleCard(); renderSheetImportCard(); renderDocuments(); renderWise();
+    renderFlights(); renderPassengers(); renderChecklist();
+    if (!isEditingWithin('tour-thead') && !isEditingWithin('tour-tbody')) renderTours();
+    renderTickets();
+    if (!isEditingWithin('info-list')) renderInfo();
+    if (!isEditingWithin('reservations-hotels-list') && !isEditingWithin('reservations-restaurants-list')) renderReservations();
+    renderPlaces();
+    if (!isEditingWithin('receipts-list')) renderReceipts();
+    renderSunatCard(); renderBoardingPassCard(); renderTicketCheckCard(); renderFlightScheduleCard(); renderSheetImportCard(); renderDocuments(); renderWise();
   }).catch((err) => { console.error('loadData failed', err); });
 }
 
