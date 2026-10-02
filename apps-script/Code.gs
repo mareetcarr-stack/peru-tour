@@ -1224,7 +1224,13 @@ function requestFlightScheduleRun_() {
 // Column G (Progress) is written mid-run by the watcher as it streams the
 // runner's output — "current/total" bookings processed so far — same
 // pattern as BOARDINGPASS_TRIGGER's Progress column.
-const SHEETIMPORT_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat', 'Progress'];
+// CancelRequested (col H) is set by requestSheetImportCancel_() and cleared
+// by the watcher once it's acted on it — see sheetimport-watcher.js. Checked
+// by the watcher both before starting a queued run (skips it entirely) and
+// during a running one (kills sheet-runner.js partway through). Cancelling a
+// run already in progress stops it from making further changes but can't
+// undo whatever it already wrote to the Sheet before the flag was noticed.
+const SHEETIMPORT_HEADERS_ = ['Status', 'RequestedAt', 'StartedAt', 'FinishedAt', 'Message', 'WatcherHeartbeat', 'Progress', 'CancelRequested'];
 
 function sheetImportSheet_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -1252,6 +1258,7 @@ function getSheetImportStatus_() {
     message: String(row[4] || ''),
     heartbeat: epochMs_(row[5]),
     progress: String(row[6] || ''),
+    cancelRequested: bool_(row[7]),
   };
 }
 
@@ -1261,6 +1268,21 @@ function requestSheetImportRun_() {
   sh.getRange(2, 2).setValue(new Date());
   sh.getRange(2, 3, 1, 3).setValue(''); // clear StartedAt/FinishedAt/Message from any previous run
   sh.getRange(2, 7).setValue(''); // clear Progress from any previous run
+  sh.getRange(2, 8).setValue(false); // clear CancelRequested from any previous run
+  return getSheetImportStatus_();
+}
+
+// Only flags the cancel request — the watcher owns the Status column (it's
+// the only thing that actually knows whether sheet-runner.js has started,
+// finished, or is still running), so this never touches Status itself to
+// avoid the two of them racing to write it. A no-op once nothing is
+// actually requested/running, so it's safe to call more than once.
+function requestSheetImportCancel_() {
+  const sh = sheetImportSheet_();
+  const status = String(sh.getRange(2, 1).getValue() || 'idle').trim().toLowerCase();
+  if (status === 'requested' || status === 'running') {
+    sh.getRange(2, 8).setValue(true);
+  }
   return getSheetImportStatus_();
 }
 
@@ -1298,6 +1320,7 @@ function handleWrite_(body) {
     case 'requestTicketCheckRun': return requestTicketCheckRun_();
     case 'requestFlightScheduleRun': return requestFlightScheduleRun_();
     case 'requestSheetImportRun': return requestSheetImportRun_();
+    case 'requestSheetImportCancel': return requestSheetImportCancel_();
     default: throw new Error('Unknown write action: ' + body.action);
   }
 }

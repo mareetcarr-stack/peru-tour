@@ -1806,7 +1806,7 @@ function requestFlightScheduleRun() {
 // ─── TRAVELLER DATA IMPORT — same "mailbox" pattern again, for ─────────
 // sheet-runner.js. No countdown here either: it only reads whatever
 // spreadsheet Yenrri already uploaded to Drive and re-running is free.
-const SHEETIMPORT_STATUS_LABEL = { idle: 'Idle', requested: 'Requested — waiting for watcher…', running: 'Running…', done: 'Done', error: 'Error' };
+const SHEETIMPORT_STATUS_LABEL = { idle: 'Idle', requested: 'Requested — waiting for watcher…', running: 'Running…', done: 'Done', error: 'Error', cancelled: 'Cancelled' };
 
 function renderSheetImportCard() {
   if (!DATA) return;
@@ -1816,9 +1816,9 @@ function renderSheetImportCard() {
   const heartbeatAgo = timeAgo(s.heartbeat);
   const watcherOnline = !!(s.heartbeat && (Date.now() - s.heartbeat) < 5 * 60 * 1000);
   const busy = s.status === 'requested' || s.status === 'running';
-  let statusLine = SHEETIMPORT_STATUS_LABEL[s.status] || s.status;
-  if ((s.status === 'done' || s.status === 'error') && s.message) statusLine += ': ' + s.message;
-  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : 'var(--text)';
+  let statusLine = s.cancelRequested && busy ? 'Cancelling…' : (SHEETIMPORT_STATUS_LABEL[s.status] || s.status);
+  if ((s.status === 'done' || s.status === 'error' || s.status === 'cancelled') && s.message) statusLine += ': ' + s.message;
+  const statusColor = s.status === 'error' ? 'var(--red)' : s.status === 'done' ? 'var(--green)' : s.status === 'cancelled' ? 'var(--amber)' : 'var(--text)';
 
   // A full import (traveller data + all the sheets it builds + a LATAM
   // check-in lookup per booking) can take several minutes — without this,
@@ -1856,11 +1856,33 @@ function renderSheetImportCard() {
       <div class="wa-btn" style="justify-content:center;width:100%;${busy ? 'opacity:.5;pointer-events:none' : ''}" onclick="requestSheetImportRun()">
         <i class="ti ti-upload"></i>&nbsp;${busy ? 'In progress…' : 'Import Traveller Data'}
       </div>
-    </div>`;
+    </div>
+    ${busy ? `
+    <div style="margin-top:8px">
+      <div class="wa-btn" style="justify-content:center;width:100%;background:var(--red-bg);border:1px solid var(--red-border);color:var(--red);${s.cancelRequested ? 'opacity:.5;pointer-events:none' : ''}" onclick="requestSheetImportCancel()">
+        <i class="ti ti-x"></i>&nbsp;${s.cancelRequested ? 'Cancelling…' : 'Cancel'}
+      </div>
+    </div>` : ''}`;
 }
 
 function requestSheetImportRun() {
   write({ action: 'requestSheetImportRun' }).then((res) => {
+    DATA.sheetImport = res.result;
+    renderSheetImportCard();
+  });
+}
+
+// If the watcher hasn't started yet (still "Requested"), this stops the
+// import before it ever touches the Sheet. If it's already "Running",
+// stopping it partway through doesn't undo whatever it's already written —
+// only what sheet-runner.js hadn't gotten to yet is avoided.
+function requestSheetImportCancel() {
+  const s = DATA.sheetImport || {};
+  const detail = s.status === 'running'
+    ? "Cancel this import? It's already running — stopping it now will NOT undo any changes it's already made, only skip whatever it hasn't gotten to yet."
+    : "Cancel this import request before the watcher picks it up?";
+  if (!confirm(detail)) return;
+  write({ action: 'requestSheetImportCancel' }).then((res) => {
     DATA.sheetImport = res.result;
     renderSheetImportCard();
   });
