@@ -336,6 +336,7 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
       <div class="sec-label">Generate Boarding Passes</div>
       <div id="boardingpass-card" class="tot-block"></div>
       <div class="sum-grid" id="pax-summary"></div>
+      <div id="notify-cancelled-card"></div>
       <div class="sec-hdr-row">
         <div class="sec-label">Check-in and boarding pass status</div>
         <div class="sel-all-btn" id="pax-select-all" onclick="toggleAllArrived()"></div>
@@ -447,8 +448,8 @@ th.ck-t,th.ck-v{padding-top:3px;padding-bottom:3px}
         <li>Bus tickets (PDF)</li>
         <li>Tour purchase vouchers from Valencia Travel (.docx) — checks off the Tours tab and adds any dietary notes</li>
         <li>The tour's Travel Plan (.docx) — generates the hotel/restaurant WhatsApp messages on the Info &amp; Diet tab</li>
-        <li>The agency's traveller-data spreadsheet (.xlsx) — saved as a PDF and filed into the Docs tab's Passports section, named after its VTGR booking code</li>
-        <li>Passport scans (photo/PDF) — usually arrive later, once travellers land — sorted straight into the Docs tab's Passports section</li>
+        <li>The agency's traveller-data spreadsheet (.xlsx) — saved as a PDF and filed into the Docs tab's Important Documents section, named after its VTGR booking code</li>
+        <li>Passport scans (photo/PDF) — usually arrive later, once travellers land — sorted straight into the Docs tab's Important Documents section</li>
       </ul>
       <div class="hint">Then tap the 'Check Documents' button below.</div>
       <div id="ticketcheck-card" class="tot-block"></div>
@@ -760,6 +761,7 @@ function deleteFlight(row) {
 // ─── PASSENGERS ──────────────────────────────────────────────────
 function renderPassengers() {
   if (!DATA) return;
+  renderNotifyCancelledCard();
   const pax = DATA.passengers || [];
   // Yenrri (id "0") is the tour leader, not a travelling passenger — excluded
   // from both counts. Cancelled travellers are excluded too — they stay
@@ -826,16 +828,20 @@ function renderPassengers() {
 // ─── CANCELLED TRAVELLERS ──────────────────────────────────────────────
 // Marking someone cancelled doesn't remove their row anywhere — every tab
 // is keyed by passenger ID and removing a row would break that — it just
-// greys them out and excludes them from every count/total. A cancellation
-// also opens a WhatsApp draft (recipient left blank — Yenrri picks who to
-// send it to) asking Valencia to cancel that traveller's bookings.
+// greys them out and excludes them from every count/total.
+//
+// This used to also open a WhatsApp draft immediately, per passenger —
+// cancelling several people on the same booking (or just in the same
+// sitting) meant one draft per person. Notifying Valencia is now a
+// separate, manual step (see notifyCancelledPassengers() below) so
+// multiple cancellations become a single combined message instead.
 function toggleCancelled(id, currentlyCancelled) {
   const p = (DATA.passengers || []).find(x => x.id === id);
   if (!p) return;
   const verb = currentlyCancelled ? 'Reinstate' : 'Mark as cancelled';
   const detail = currentlyCancelled
     ? `Reinstate ${p.name}? They'll count towards totals again.`
-    : `Mark ${p.name} as cancelled? They'll be greyed out and excluded from every count/total across the app, and this opens a WhatsApp draft to notify Valencia.`;
+    : `Mark ${p.name} as cancelled? They'll be greyed out and excluded from every count/total across the app. Use the "Notify Valencia" button afterwards to let Valencia know.`;
   if (!confirm(`${verb}\n\n${detail}`)) return;
   const newValue = !currentlyCancelled;
   // Optimistic update — every tab keyed by this passenger ID carries its
@@ -847,10 +853,45 @@ function toggleCancelled(id, currentlyCancelled) {
   });
   renderPassengers(); renderTours(); renderTickets(); renderInfo();
   write({ action: 'toggleCancelled', id: id, value: newValue });
-  if (newValue) {
-    const msg = `Hola, ${p.name}${p.passport ? ' (pasaporte ' + p.passport + ')' : ''} ha cancelado su participación en este tour y no viajará a Perú. Por favor cancelen todos los boletos, tours y reservas hechos a su nombre. Muchas gracias.`;
-    waShare(msg);
+}
+
+// Builds ONE WhatsApp draft covering every currently-cancelled passenger,
+// grouped by booking (PNR) so Valencia can see at a glance which
+// reservation each group belongs to — instead of a separate message per
+// passenger. Recipient is left blank, same as every other WhatsApp draft
+// in this app — Yenrri picks who to send it to. Re-lists whoever is
+// currently cancelled each time it's tapped (no "already notified"
+// tracking), so tap it once after cancelling everyone for this sitting.
+function notifyCancelledPassengers() {
+  const cancelled = (DATA.passengers || []).filter(p => p.cancelled);
+  if (!cancelled.length) return;
+
+  const groups = new Map(); // PNR (or '' for none) -> passengers
+  cancelled.forEach(p => {
+    const key = p.pnr || '';
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(p);
+  });
+
+  const lines = [];
+  for (const [pnr, pax] of groups) {
+    lines.push(pnr ? `Reserva ${pnr}:` : 'Sin reserva asignada:');
+    pax.forEach(p => lines.push(`- ${p.name}${p.passport ? ' (pasaporte ' + p.passport + ')' : ''}`));
+    lines.push('');
   }
+
+  const msg = `Hola, los siguientes pasajeros han cancelado su participación en este tour y no viajarán a Perú. Por favor cancelen todos los boletos, tours y reservas hechos a sus nombres:\n\n${lines.join('\n').trim()}\n\nMuchas gracias.`;
+  waShare(msg);
+}
+
+function renderNotifyCancelledCard() {
+  const card = document.getElementById('notify-cancelled-card');
+  if (!card || !DATA) return;
+  const count = (DATA.passengers || []).filter(p => p.cancelled).length;
+  card.innerHTML = count ? `
+    <div class="wa-btn" style="justify-content:center;width:100%;margin-bottom:9px;background:var(--red-bg);border:1px solid var(--red-border);color:var(--red)" onclick="notifyCancelledPassengers()">
+      <i class="ti ti-brand-whatsapp"></i>&nbsp;Notify Valencia (${count} cancelled)
+    </div>` : '';
 }
 // Everyone the Arrived tick actually applies to — Yenrri (id "0") is the
 // tour leader, not a travelling passenger, and cancelled travellers are out
@@ -1408,7 +1449,7 @@ function renderDocuments() {
   // the Briefings) also get shared with the group over WhatsApp, but only
   // those specific files — not the whole Key Documents section, since the
   // Briefing docs sit there too and aren't meant to be shared the same way.
-  const SHAREABLE_SECTIONS_ = ['Boarding Passes', 'Passports'];
+  const SHAREABLE_SECTIONS_ = ['Boarding Passes', 'Important Documents'];
   // Per-hotel menu-choice sheets (e.g. Andean Wings Sotupa Eco Lodge) also
   // get a Share button, matched by filename like Recommendations rather
   // than by section — Maree files these wherever makes sense per tour
@@ -1423,7 +1464,7 @@ function renderDocuments() {
   // Passports-2.pdf, -3.pdf... on a name collision) — so without a delete
   // option old scans would accumulate in the Docs tab forever. Both get a
   // delete button so either can be removed sooner than that if needed.
-  const DELETABLE_SECTIONS_ = { 'Boarding Passes': 'boardingPass', 'Passports': 'passport' };
+  const DELETABLE_SECTIONS_ = { 'Boarding Passes': 'boardingPass', 'Important Documents': 'passport' };
   const filesHtml = (files, name) => files.length ? files.map((f) => {
     const deleteKind = DELETABLE_SECTIONS_[name];
     return `

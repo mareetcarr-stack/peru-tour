@@ -775,7 +775,12 @@ function getDocuments_() {
   if (boardingPassFiles.length) sections.push({ name: 'Boarding Passes', files: boardingPassFiles });
 
   const passportFiles = getPassportDocs_();
-  if (passportFiles.length) sections.push({ name: 'Passports', files: passportFiles });
+  // Displayed as "Important Documents" in the app — this folder now holds
+  // more than just passport scans (e.g. the traveller-data PDF from
+  // ticket-checker.js), so "Passports" stopped being an accurate label.
+  // Still backed by the same "LATAM Passports" Drive folder and 'passport'
+  // delete-kind internally — only the display name changed.
+  if (passportFiles.length) sections.push({ name: 'Important Documents', files: passportFiles });
 
   const rootFiles = listFolderFiles_(root).filter((f) => EXCLUDED_DOC_IDS_.indexOf(f.id) === -1);
 
