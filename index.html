@@ -1771,7 +1771,17 @@ function renderTicketCheckFindings_(s) {
   const hasIssues = s.message && !/^(no issues found|tickets checked)$/i.test(s.message.trim());
   if (!hasIssues) { box.innerHTML = '<div class="empty-hint">No issues from the last check</div>'; return; }
   const stamp = s.finishedAt ? new Date(s.finishedAt).toLocaleString('en-AU', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '';
-  box.innerHTML = `<div class="tot-row" style="align-items:flex-start"><div class="tot-lbl" style="color:var(--red);text-align:left">${stamp ? esc(stamp) + ' — ' : ''}${esc(s.message)}</div></div>`;
+  // Message is "<N> issue(s) found — <item 1> | <item 2> | ..." — split the
+  // items out into a bulleted list rather than one dense paragraph.
+  const m = s.message.match(/^(.*?issue\(s\) found)\s*—\s*(.+)$/is);
+  const header = m ? m[1] : s.message;
+  const items = m ? m[2].split(' | ') : [];
+  const listHtml = items.length
+    ? `<ul style="margin:6px 0 0;padding-left:16px">${items.map(i => `<li style="margin-bottom:4px">${esc(i)}</li>`).join('')}</ul>`
+    : '';
+  box.innerHTML = `
+    <div class="tot-row" style="align-items:flex-start"><div class="tot-lbl" style="color:var(--text);text-align:left">${stamp ? esc(stamp) + ' — ' : ''}${esc(header)}</div></div>
+    ${listHtml ? `<div style="color:var(--text);font-size:11px;line-height:1.4">${listHtml}</div>` : ''}`;
 }
 
 function renderTicketCheckCard() {
