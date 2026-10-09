@@ -268,7 +268,12 @@ function ensureCancelledHeader_() {
 function normalizeName_(first, second) {
   return fullName_(first, second).trim().toLowerCase().replace(/\s+/g, ' ');
 }
+let CANCELLED_MEMO_ = null; // read the CHECK-IN tab once per refresh, not three times
 function getCancelledNames_() {
+  if (!CANCELLED_MEMO_) CANCELLED_MEMO_ = getCancelledNamesUncached_();
+  return CANCELLED_MEMO_;
+}
+function getCancelledNamesUncached_() {
   const rows = sheet_('checkin').getDataRange().getValues();
   const names = new Set();
   for (let r = 1; r < rows.length; r++) {
@@ -526,6 +531,13 @@ function getInfo_() {
 }
 
 function getRecs_() {
+  const c = cacheGet_('recs');
+  if (c) { try { return JSON.parse(c); } catch (e) {} }
+  const v = getRecsUncached_();
+  cachePut_('recs', JSON.stringify(v), 600);
+  return v;
+}
+function getRecsUncached_() {
   const rows = sheet_('recs').getDataRange().getValues();
   const restaurants = [];
   const sightseeing = [];
@@ -1550,6 +1562,13 @@ function deleteReceipt_(row) {
 // ticket-checker.js every time a new Travel Plan is imported, while VENUE
 // CONTACTS is a separate, persistent lookup that survives that rewrite.
 function getReservations_() {
+  const c = cacheGet_('reservations');
+  if (c) { try { return JSON.parse(c); } catch (e) {} }
+  const v = getReservationsUncached_();
+  cachePut_('reservations', JSON.stringify(v), 300);
+  return v;
+}
+function getReservationsUncached_() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const sh = ss.getSheetByName(SHEET_NAMES.reservations);
   if (!sh) return [];
@@ -1626,7 +1645,8 @@ function setVenuePhone_(name, value) {
     targetRow = sh.getLastRow() + 1;
     sh.getRange(targetRow, 1).setValue(trimmedName);
   }
-  sh.getRange(targetRow, 2).setValue(value || '');
+    sh.getRange(targetRow, 2).setValue(value || '');
+  cacheClear_('reservations');
   return { name: trimmedName, value: value };
 }
 
@@ -1673,4 +1693,16 @@ function installCacheTrigger() {
     .filter(t => t.getHandlerFunction() === 'refreshCaches')
     .forEach(t => ScriptApp.deleteTrigger(t));
   ScriptApp.newTrigger('refreshCaches').timeBased().everyMinutes(10).create();
+}
+
+function timeSections() {
+  const t = {};
+  const time = (k, fn) => { const s = Date.now(); fn(); t[k] = Date.now() - s; };
+  time('checkin', getCheckin_); time('flights', getFlights_); time('checklist', getChecklist_);
+  time('tours', getTours_); time('tickets', getTickets_); time('info', getInfo_);
+  time('recs', getRecs_); time('receipts', getReceipts_); time('sunat', getSunatStatus_);
+  time('boardingPass', getBoardingPassStatus_); time('ticketCheck', getTicketCheckStatus_);
+  time('flightSchedule', getFlightScheduleStatus_); time('sheetImport', getSheetImportStatus_);
+  time('documents', getDocuments_); time('wise', getWiseInfo_); time('reservations', getReservations_);
+  Logger.log(JSON.stringify(t, null, 1));
 }
