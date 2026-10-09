@@ -562,9 +562,10 @@ function setSync(state) {
 let pendingWrites = 0;
 let writeEpoch = 0; // bumps whenever a save starts or finishes
 function write(payload) {
-  setSync('saving');
+    setSync('saving');
   pendingWrites++;
   writeEpoch++;
+  if (DATA) saveDataCache_(); // keep the on-phone copy in step with ticks the moment they're made
   return apiPost(payload).then((res) => {
     if (!res.ok) throw new Error(res.error || 'Write failed');
     setSync('saved');
@@ -662,7 +663,14 @@ function hardRefresh() {
     title: document.getElementById('page-title').textContent,
     subTab: activeSubTab ? activeSubTab.dataset.view : null,
   }));
-  setTimeout(() => location.reload(), 250);
+    // Reloading cancels any save still in flight, so wait for those to finish
+  // first (up to 30 seconds, then reload regardless).
+  const waitStart = Date.now();
+  const goReload = () => {
+    if (pendingWrites > 0 && Date.now() - waitStart < 30000) { setTimeout(goReload, 200); return; }
+    location.reload();
+  };
+  setTimeout(goReload, 250);
 }
 
 function switchScreen(id, title) {
