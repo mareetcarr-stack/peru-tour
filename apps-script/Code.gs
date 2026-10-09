@@ -662,11 +662,14 @@ function applyEditableSharing_(files) {
 // sharing first means the write only actually happens for a genuinely new
 // or wrongly-shared file.
 function ensurePublicViewSharing_(file) {
-  if (file.getSharingAccess() === DriveApp.Access.ANYONE_WITH_LINK &&
-      file.getSharingPermission() === DriveApp.Permission.VIEW) {
-    return; // already shared correctly — skip the redundant write
+  const cache = CacheService.getScriptCache();
+  const key = 'shared:' + file.getId();
+  if (cache.get(key)) return; // already verified recently — no Drive calls needed
+  if (file.getSharingAccess() !== DriveApp.Access.ANYONE_WITH_LINK ||
+      file.getSharingPermission() !== DriveApp.Permission.VIEW) {
+    file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
   }
-  file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+  cache.put(key, '1', 21600);
 }
 
 // Same idea as ensurePublicViewSharing_ above, but for docs where the
@@ -735,7 +738,8 @@ function deleteDriveDoc_(id, kind) {
   while (files.hasNext()) {
     const f = files.next();
     if (f.getId() === id) {
-      f.setTrashed(true);
+            f.setTrashed(true);
+      cacheClear_('docs');
       return { id: id, deleted: true };
     }
   }
@@ -768,6 +772,32 @@ function getPassportDocs_() {
 }
 
 function getDocuments_() {
+  let docs = null;
+  const cached = cacheGet_('docs');
+  if (cached) {
+    try { docs = JSON.parse(cached); } catch (e) {}
+  }
+  if (!docs) docs = refreshDocsCache_();
+
+  // Boarding passes + passports are always read live; everything else is cached.
+  const rest = docs.sections.filter(
+    (s) => s.name !== 'Boarding Passes' && s.name !== 'Important Documents'
+  );
+  const live = [];
+  const bp = getBoardingPassDocs_();
+  if (bp.length) live.push({ name: 'Boarding Passes', files: bp });
+  const pp = getPassportDocs_();
+  if (pp.length) live.push({ name: 'Important Documents', files: pp });
+  return { folderName: docs.folderName, sections: live.concat(rest) };
+}
+
+function refreshDocsCache_() {
+  const docs = buildDocuments_();
+  cachePut_('docs', JSON.stringify(docs), 1800);
+  return docs;
+}
+
+function buildDocuments_() {
   const root = DriveApp.getFolderById(DOCS_FOLDER_ID);
   const sections = [];
 
@@ -907,6 +937,14 @@ function getWiseSheet_() {
 // embedded directly as a data URI in the JSON response (more reliable than
 // linking to a Drive URL, which needs specific sharing/CORS to render inline).
 function findWiseQrImage_() {
+  const cached = cacheGet_('wiseqr');
+  if (cached !== null) return cached === '-' ? '' : cached;
+  const uri = findWiseQrImageUncached_();
+  cachePut_('wiseqr', uri || '-', 21600);
+  return uri;
+}
+
+function findWiseQrImageUncached_() {
   try {
     const folder = DriveApp.getFolderById(DOCS_FOLDER_ID);
     const it = folder.getFiles();
@@ -1592,3 +1630,47 @@ function setVenuePhone_(name, value) {
   return { name: trimmedName, value: value };
 }
 
+// ─── CACHE ──────────────────────────────────────────────
+function cachePut_(key, str, ttl) {
+  const CHUNK = 30000;
+  const n = Math.max(1, Math.ceil(str.length / CHUNK));
+  const obj = {};
+  for (let i = 0; i < n; i++) obj[key + ':' + i] = str.substr(i * CHUNK, CHUNK);
+  obj[key + ':n'] = String(n);
+  CacheService.getScriptCache().putAll(obj, ttl);
+}
+function cacheGet_(key) {
+  const cache = CacheService.getScriptCache();
+  const n = parseInt(cache.get(key + ':n'), 10);
+  if (!n) return null;
+  const keys = [];
+  for (let i = 0; i < n; i++) keys.push(key + ':' + i);
+  const got = cache.getAll(keys);
+  let s = '';
+  for (let i = 0; i < n; i++) {
+    const part = got[key + ':' + i];
+    if (part == null) return null;
+    s += part;
+  }
+  return s;
+}
+function cacheClear_(key) {
+  const cache = CacheService.getScriptCache();
+  const n = parseInt(cache.get(key + ':n'), 10) || 0;
+  const keys = [key + ':n'];
+  for (let i = 0; i < n; i++) keys.push(key + ':' + i);
+  cache.removeAll(keys);
+}
+
+// Runs on a timer so the phone never waits for the slow Drive work.
+function refreshCaches() {
+  refreshDocsCache_();
+  findWiseQrImage_();
+}
+// Run this ONCE from the editor.
+function installCacheTrigger() {
+  ScriptApp.getProjectTriggers()
+    .filter(t => t.getHandlerFunction() === 'refreshCaches')
+    .forEach(t => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('refreshCaches').timeBased().everyMinutes(10).create();
+}
