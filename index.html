@@ -560,9 +560,11 @@ function setSync(state) {
 // to unchecked a few seconds after the user ticked it. This was reported
 // as "I tick Tips as paid and it resets itself back to unpaid moments later".
 let pendingWrites = 0;
+let writeEpoch = 0; // bumps whenever a save starts or finishes
 function write(payload) {
   setSync('saving');
   pendingWrites++;
+  writeEpoch++;
   return apiPost(payload).then((res) => {
     if (!res.ok) throw new Error(res.error || 'Write failed');
     setSync('saved');
@@ -570,9 +572,9 @@ function write(payload) {
   }).catch((err) => {
     setSync('error');
     alert('Could not save — check your connection and try again.\n' + err.message);
-    loadData(); // re-sync from the sheet to undo any optimistic change
+        setTimeout(() => loadData(true), 0); // re-sync from the sheet to undo any optimistic change
     throw err;
-  }).finally(() => { pendingWrites--; });
+  }).finally(() => { pendingWrites--; writeEpoch++; });
 }
 
 // A poll-triggered refresh rebuilds a section's HTML from scratch (same
@@ -595,10 +597,36 @@ function isEditingWithin(containerId) {
 
 // ─── DATA LOAD / RENDER ALL ──────────────────────────────────────
 let DATA = null;
-function loadData() {
-  return apiGet({ action: 'data' }).then((res) => {
+// Last-loaded data is kept on the phone so the app shows something
+// instantly on open, then updates when the fresh copy arrives.
+function saveDataCache_() { try { localStorage.setItem('ptm_data_cache', JSON.stringify(DATA)); } catch (e) {} }
+function loadDataCache_() {
+  try {
+    const s = localStorage.getItem('ptm_data_cache');
+    if (s) { DATA = JSON.parse(s); renderAll_(); }
+  } catch (e) {}
+}
+let loadInFlight = null;
+function loadData(force) {
+  if (loadInFlight && !force) return loadInFlight; // never stack up slow requests
+  const epochAtStart = writeEpoch;
+  const p = apiGet({ action: 'data' }).then((res) => {
     if (!res.ok) throw new Error(res.error);
+    // A save started or finished while this was loading, so this data may
+    // pre-date it. Throw it away and fetch again shortly.
+    if (!force && (epochAtStart !== writeEpoch || pendingWrites > 0)) {
+      setTimeout(() => loadData(), 2500);
+      return;
+    }
     DATA = res.data;
+    saveDataCache_();
+    renderAll_();
+  }).catch((err) => { console.error('loadData failed', err); })
+    .finally(() => { if (loadInFlight === p) loadInFlight = null; });
+  loadInFlight = p;
+  return p;
+}
+function renderAll_() {
     renderFlights(); renderPassengers(); renderChecklist();
     if (!isEditingWithin('tour-thead') && !isEditingWithin('tour-tbody')) renderTours();
     renderTickets();
@@ -607,7 +635,7 @@ function loadData() {
     renderPlaces();
     if (!isEditingWithin('receipts-list')) renderReceipts();
     renderSunatCard(); renderBoardingPassCard(); renderTicketCheckCard(); renderFlightScheduleCard(); renderSheetImportCard(); renderDocuments(); renderWise();
-  }).catch((err) => { console.error('loadData failed', err); });
+
 }
 
 // ─── NAVIGATION ──────────────────────────────────────────────────
@@ -2052,6 +2080,7 @@ loadRates();
 restoreLastScreen(); // do this before loadData() starts — it's a network
                       // fetch, and waiting for it first means Flights (the
                       // default markup) paints, then jumps to the saved tab
+loadDataCache_();
 loadData();
 setInterval(() => { if (document.visibilityState === 'visible' && pendingWrites === 0) loadData(); }, 45000);
 // FX rates move slowly — refresh roughly hourly rather than every 45s poll.
